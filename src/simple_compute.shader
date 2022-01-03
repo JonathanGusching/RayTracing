@@ -9,6 +9,9 @@ uniform vec3 camera_direction;
 uniform vec3 camera_up;
 
 #define REFLECTION_NUMBER 5
+#define INF 100000.0
+#define DELTA 0.0001
+
 //TO DO: SSBO STORE TRIANGLES=> COLOUR (3) + VERTEX(3)
 
 #define BG_COLOR vec4(0.72,0.85,1.0,1.0)
@@ -42,6 +45,7 @@ struct Hit
 {
   float distance;
   vec3 hitPos;
+  vec3 normal;
 };
 
 struct LightSource
@@ -55,6 +59,7 @@ float Distance_2(vec3 pt1, vec3 pt2)
 {
   return dot(pt1-pt2,pt1-pt2);
 }
+
 bool Intersect(Ray ray, Sphere sphere, inout Hit rayHit)
 {
   // Calculate distance along the ray where the sphere is intersected
@@ -65,10 +70,11 @@ bool Intersect(Ray ray, Sphere sphere, inout Hit rayHit)
         return false;
     float p2 = sqrt(p2sqr);
     float t = p1 - p2 > 0 ? p1 - p2 : p1 + p2;
-    if (t >= 0 && t < rayHit.distance)
+    if (t > 0 && t < rayHit.distance)
     {
         rayHit.distance = t;
-        rayHit.hitPos = ray.origin + t * ray.direction;
+        rayHit.hitPos = ray.origin+distance*DELTA + t * ray.direction;
+        rayHit.normal = normalize(sphere.origin - rayHit.hitPos);
         return true;
     }
     return false;
@@ -80,9 +86,9 @@ bool IntersectGroundPlane(Ray ray, inout Hit hit)
   float t = -ray.origin.y / ray.direction.y;
   if (t > 0 && t<hit.distance)
   {
-    hit.distance=t;
+    hit.distance = t;
     hit.hitPos = ray.origin + t * ray.direction;
-    //hit.normal = float3(0.0f, 1.0f, 0.0f);
+    hit.normal = vec3(0.0f, 1.0f, 0.0f);
 
     return true;
   }
@@ -94,7 +100,7 @@ Hit CreateHit()
 {
   Hit hit;
   hit.hitPos=vec3(0.0,0.0,0.0);
-  hit.distance=100000000000.0; // inf
+  hit.distance=INF;
 
   return hit;
 }
@@ -136,11 +142,11 @@ vec3 Lambertian_Shading(vec3 d, vec3 colors_in, vec3 normal, vec3 v_in, LightSou
 }
 
 // Phong
-vec3 Specular_Shading(vec3 k, vec3 colors_in, vec3 normal, vec3 v_in,LightSource source)
+vec3 Specular_Shading(vec3 k, vec3 colors_in, vec3 normal, vec3 v_in, LightSource source)
 {
   vec3 l=normalize(-source.position+v_in);
   vec3 bisector=normalize(v_in+l);
-  float max_coefficient=max(0,pow(dot(normal,bisector),100));
+  float max_coefficient=max(0,pow(dot(normal,bisector),250));
   return vec3(k[0]*colors_in[0]*max_coefficient,
               k[1]*colors_in[1]*max_coefficient,
               k[2]*colors_in[2]*max_coefficient);
@@ -151,30 +157,89 @@ vec3 Reflect(vec3 incident, vec3 normal)
   return 2*(dot(incident, normal))*normal - incident;
 }
 
-vec4 Trace(Ray ray, Sphere list[5], int size, LightSource sources[5], int nb_sources)
+bool Blocked(vec3 point, Sphere list[5], int size, LightSource source)
+{
+  Hit hit=CreateHit();
+  vec3 direction=normalize(source.position-point);
+  Ray ray=CreateRay(point, direction);
+  for(int i=0; i<size; i++)
+  {
+    if(Intersect(ray, list[i], hit))
+      return true;
+  }
+  return false;
+}
+
+void Shade(Hit hit, inout vec4 pixel, Sphere list[5], int size, LightSource sources[5], int nb_sources)
+{
+  for(int j=0; j<nb_sources;j++)
+  {
+    if(!Blocked(hit.hitPos, list, size, sources[j]))
+    {
+      pixel.xyz+=Lambertian_Shading(vec3(0.5,0.5,0.5), vec3(1.0,1.0,1.0), hit.normal, normalize(hit.hitPos), sources[j]);
+      pixel.xyz+=Specular_Shading(vec3(0.4,0.4,0.4), vec3(1.0,1.0,1.0), hit.normal, normalize(hit.hitPos), sources[j]);
+    }
+  }  
+  //return pixel;
+}
+
+Hit ClosestHitPoint(Ray ray, Sphere List[5], int size)
+{
+  Hit hit=CreateHit();
+  for(int i=0;i<size;i++)
+  {
+    Intersect(ray, List[i], hit);
+  }
+
+  return hit;
+}
+
+
+float ComputeReflection(Ray ray, Sphere list[5], int size)
+{
+  Hit hit=CreateHit();
+  for(int i=0; i<size; i++)
+  {
+    if(Intersect(ray, list[i], hit))
+    {
+      return vec3(1.0,0.1,0.1);
+    }
+  }
+}
+
+vec4 Trace(inout Ray ray, Sphere list[5], int size, LightSource sources[5], int nb_sources)
 {
   bool touched=false;
 
   Hit hit = CreateHit();
-  vec4 pixel=0.1*vec4(1.0,1.0,1.0,1.0);
-
-
-  for(int i=0;i<size;i++)
+  //vec4 pixel=0.1*vec4(1.0,1.0,1.0,1.0);
+  vec4 pixel=vec4(0.4,0.4,0.4,1.0);
+  float frac=1.0;
+  for(int raybounce=0; raybounce<5; raybounce++)
   {
-    Sphere sphere=list[i];
-    if(touched=Intersect(ray, sphere, hit)) // Sphere
+    hit = ClosestHitPoint(ray, list, size);
+    if(hit.distance<INF)
     {
-      //pixel=vec4(1.0,1.0,1.0,1.0);
-      for(int j=0; j<nb_sources;j++)
+      pixel=pixel*frac;
+      Shade(hit, pixel, list, size, sources, nb_sources);
+
+      if(raybounce>0)
       {
-        pixel=vec4(Lambertian_Shading(vec3(0.75,0.75,0.75),vec3(1.0,1.0,1.0),normalize(sphere.origin-hit.hitPos),normalize(hit.hitPos), sources[j]),1.0);
-        pixel+=vec4(Specular_Shading(vec3(0.25,0.25,0.25),vec3(1.0,1.0,1.0),normalize(sphere.origin-hit.hitPos),normalize(hit.hitPos), sources[j]),1.0);
+        pixel.xyz+=ComputeReflection(ray, list, size);
       }
+      //pixel=vec4(0.0,0.0,0.0,1.0);
     }
-    else if(i==0)
-    {
+    else
       pixel=BG_COLOR;
-    }
+
+    frac=frac/3.0;
+    //Ray reflection=CreateRay(hit, Reflect(ray, normalize(sphere.origin-hit.hitPos)));
+    //for(int k=0; k<size; k++)
+    //{
+    //}
+
+    ray.direction=Reflect(ray.direction, hit.normal);
+    ray.origin=hit.hitPos;
   }
 
   return pixel;
@@ -210,25 +275,20 @@ void main() {
 
   Sphere test_s[5];
   
-  Sphere test_sphere=CreateSphere(0.01*max_y,vec3(0.0,0.0,80.0));
-  Sphere test_sphere2=CreateSphere(0.01*max_y,vec3(20.0,0.0,60.0));
+  Sphere test_sphere=CreateSphere(0.01*max_y,vec3(10.0,0.0,10.0));
+  Sphere test_sphere2=CreateSphere(0.01*max_y,vec3(20.0,0.0,29.0));
+  Sphere test_sphere3=CreateSphere(0.05*max_y,vec3(60.0,0.0,90.0));
   
   test_s[0]=test_sphere;
   test_s[1]=test_sphere2;
+  test_s[2]=test_sphere3;
 
   LightSource sources[5];
-  sources[0].position=vec3(-50.0,0.0,-100.0);
-  sources[1].position=vec3(500.0,0.0,-100.0);
-  pixel=Trace(initial_ray,test_s,2, sources, 1);
+  sources[0].position=vec3(-50.0,0.0,-50.0);
+  sources[1].position=vec3(500.0,0.0,100.0);
+  sources[2].position=vec3(-500000.0,0.0,-50000.0);
+  pixel=Trace(initial_ray,test_s, 3, sources, 1);
 
-/*
-  Hit newHit = CreateHit();
-  if(touched=IntersectGroundPlane(initial_ray, newHit)) // plane
-  {
-    //pixel=vec4(1.0,1.0,1.0,1.0);
-    pixel=vec4(Lambertian_Shading(vec3(1.0,1.0,1.0),vec3(0.0,1.0,1.0),vec3(0.0,1.0,0.0),newHit.hitPos),1.0);
-  }
-*/
 
   imageStore(img_output, coords, pixel);
 }
