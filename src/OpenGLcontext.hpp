@@ -63,6 +63,8 @@ class OpenGLcontext
 		void PrepareComputeShader();
 
 		void RefreshCameraPos();
+		
+		void ProcessCameraSpeed();
 
 		//To do: more optimised?
 		void MoveRight();
@@ -78,7 +80,10 @@ class OpenGLcontext
 		~OpenGLcontext();
 
 	private:
-		static void framebuffer_size_callback(GLFWwindow* window, int width, int height); // callback for window resizing
+		static void FramebufferSizeCallback(GLFWwindow* window, int width, int height); // callback for window resizing
+		void KeyInput();
+		float deltaTime=0.0f;
+		float lastFrame=0.0f;
 		//void key_input_callback(GLFWwindow* window, int key, int scancode, int action, int mods); // callback for key inputs
 
 };

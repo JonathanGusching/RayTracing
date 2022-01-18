@@ -37,7 +37,7 @@ int main()
     context.AddShader("simple_vertex.vert", GL_VERTEX_SHADER);
     context.AddShader("simple_color.frag", GL_FRAGMENT_SHADER);
     
-    context.AddShader("simple_compute.shader", GL_COMPUTE_SHADER);
+    context.AddShader("ray_tracing.shader", GL_COMPUTE_SHADER);
     
 
     context.GenerateTexture();

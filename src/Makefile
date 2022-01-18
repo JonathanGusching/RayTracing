@@ -12,7 +12,7 @@ default:	help
 
 all:	RayTracing.exe
 
-RayTracing.exe:	main.cpp shader.hpp shader.cpp objects.hpp objects.cpp OpenGLcontext.cpp OpenGLcontext.hpp
+RayTracing.exe:	main.cpp shader.hpp shader.cpp camera.hpp objects.hpp objects.cpp OpenGLcontext.cpp OpenGLcontext.hpp
 	$(CXX) $(CXXFLAGS) -o RayTracing.exe main.cpp shader.cpp objects.cpp OpenGLcontext.cpp $(RENDERFLAGS) 
 
 help: 

@@ -22,18 +22,21 @@ struct Material
 {
   float shininess;
   vec3 diffuse; // (K_D red, K_D green, K_D blue) = spectral reflectance of material
+  //vec3 color;
 };
 
 struct Ray
 {
   vec3 origin; // origin point
   vec3 direction; // direction
+  vec3 energy;
 };
 
 struct Sphere
 {
   vec3 origin; // origin point
-  float radius; // origin point
+  float radius; // radius
+  //Material material;
 };
 
 struct Triangle
@@ -195,7 +198,7 @@ Hit ClosestHitPoint(Ray ray, Sphere List[5], int size)
 }
 
 
-float ComputeReflection(Ray ray, Sphere list[5], int size)
+vec3 ComputeReflection(Ray ray, Sphere list[5], int size)
 {
   Hit hit=CreateHit();
   for(int i=0; i<size; i++)
@@ -225,7 +228,7 @@ vec4 Trace(inout Ray ray, Sphere list[5], int size, LightSource sources[5], int 
 
       if(raybounce>0)
       {
-        pixel.xyz+=ComputeReflection(ray, list, size);
+        //pixel.xyz+=ComputeReflection(ray, list, size);
       }
       //pixel=vec4(0.0,0.0,0.0,1.0);
     }
@@ -272,6 +275,7 @@ void main() {
 
   initial_ray.origin=actual_position;
   initial_ray.direction=normalize(vec3(x*max_x,y*max_y,10*max_y+actual_position.z)-actual_position);
+  initial_ray.energy=vec3(1.0,1.0,1.0);
 
   Sphere test_s[5];
   

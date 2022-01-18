@@ -3,49 +3,109 @@
 #define VERTEX_BYTE_SIZE 3*sizeof(GLfloat)
 
 // callback function to resize the window
-void OpenGLcontext::framebuffer_size_callback(GLFWwindow* window, int width, int height)
+void OpenGLcontext::FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
     glViewport(0, 0, width, height);
 }
 
-void key_input_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void CursorCallBack(GLFWwindow* window, double x, double y)
 {
     OpenGLcontext* context = static_cast<OpenGLcontext*>(glfwGetWindowUserPointer(window));
-    if (key == GLFW_KEY_D && (action == GLFW_REPEAT || action == GLFW_PRESS))
+
+    if(context->mainCamera.first_time)
     {
-        context->MoveRight();
+        context->mainCamera.last_x=x;
+        context->mainCamera.last_y=y;
+
+        context->mainCamera.first_time=false;
     }
-    else if (key == GLFW_KEY_A && (action == GLFW_REPEAT|| action == GLFW_PRESS))
+    float sensitivity=0.1f;
+    context->mainCamera.yaw+= glm::radians(sensitivity*(context->mainCamera.last_y-y));
+    context->mainCamera.pitch+= glm::radians(sensitivity*(x-context->mainCamera.last_x));
+
+    context->mainCamera.last_x=x;
+    context->mainCamera.last_y=y;
+    
+    /*
+    if(context->mainCamera.pitch > 3.1415/2)
     {
-        context->MoveLeft();
+        context->mainCamera.pitch=3.1415/2;
+    }
+    else if(context->mainCamera.pitch<-3.1415/2)
+    {
+        context->mainCamera.pitch=-3.1415/2;
+    }
+    */
+
+    /*
+    glm::mat3 rot_mat_yaw=glm::mat3(1,0,0,
+                    0,cos(context->mainCamera.yaw),-sin(context->mainCamera.yaw), 
+                    0,sin(context->mainCamera.yaw), cos(context->mainCamera.yaw));
+
+    glm::mat3 rot_mat_pitch=glm::mat3(cos(context->mainCamera.pitch), 0, sin(context->mainCamera.pitch),
+                      0, 1, 0,
+                      -sin(context->mainCamera.pitch), 0, cos(context->mainCamera.pitch));
+    
+    context->mainCamera.direction= rot_mat_pitch*rot_mat_yaw*context->mainCamera.direction;
+    */
+    
+    context->mainCamera.direction.z = cos(context->mainCamera.yaw) * cos(context->mainCamera.pitch);
+    context->mainCamera.direction.x = sin(-context->mainCamera.pitch);
+    context->mainCamera.direction.y = sin(context->mainCamera.yaw)*cos(context->mainCamera.pitch);
+    
+    //context->mainCamera.direction=context->mainCamera.direction-context->mainCamera.centerPos;
+
+    context->mainCamera.direction=glm::normalize(context->mainCamera.direction);
+    
+    context->RefreshCameraPos();
+}
+
+void OpenGLcontext::KeyInput()
+{
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+    {
+        MoveRight();
+    }
+    else if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+    {
+        MoveLeft();
     }
 
-    if (key == GLFW_KEY_W && (action == GLFW_REPEAT|| action == GLFW_PRESS))
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        context->MoveForward();
+        MoveForward();
     }
-    else if (key == GLFW_KEY_S && (action == GLFW_REPEAT|| action == GLFW_PRESS))
+    else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        context->MoveBackward();
+        MoveBackward();
     }
-    context->RefreshCameraPos();              
+    RefreshCameraPos();              
 }
+
 void OpenGLcontext::MoveRight()
 {
-    mainCamera.Translate(glm::vec3(0.3f,0.0f,0.0f));
+    mainCamera.Translate(glm::vec3(0.3f,0.0f,0.0f)* mainCamera.cameraSpeed);
 }
 void OpenGLcontext::MoveLeft()
 {
-    mainCamera.Translate(glm::vec3(-0.3f,0.0f,0.0f));
+    mainCamera.Translate(glm::vec3(-0.3f,0.0f,0.0f)* mainCamera.cameraSpeed);
 
 }
 void OpenGLcontext::MoveForward()
 {
-    mainCamera.Translate(glm::vec3(0.0f,0.0f,0.3f));
+    mainCamera.Translate(mainCamera.direction * mainCamera.cameraSpeed);
 }
 void OpenGLcontext::MoveBackward()
 {
-    mainCamera.Translate(glm::vec3(0.0f,0.0f,-0.3f));
+    mainCamera.Translate(-mainCamera.direction * mainCamera.cameraSpeed);
+}
+
+void OpenGLcontext::ProcessCameraSpeed()
+{
+    float currentFrame = glfwGetTime();
+    deltaTime = currentFrame - lastFrame;
+    lastFrame = currentFrame;  
+    mainCamera.cameraSpeed=mainCamera.cameraSpeed * deltaTime;
 }
 
 void OpenGLcontext::CreateWindow(std::string windowName, int screen_width, int screen_height)
@@ -81,12 +141,14 @@ void OpenGLcontext::CreateWindow(std::string windowName, int screen_width, int s
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 
     // Callback function to resize window
-    glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    glfwSetFramebufferSizeCallback(window, FramebufferSizeCallback);
 
     // Callback function for key inputs
     std::cout << "THIS: " << this << std::endl;
     glfwSetWindowUserPointer(window, this); // need to access some members of the class in the callback function
-    glfwSetKeyCallback(window, key_input_callback);
+    
+    // For a smoother movement, we prefer using pooling
+    //glfwSetKeyCallback(window, KeyInputCallback);
 
     std::cout << "Window initialized" << std::endl;
     
@@ -105,7 +167,8 @@ void OpenGLcontext::CreateWindow(std::string windowName, int screen_width, int s
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS,&max_vert_attrib);
     std::cout<< "Vertex attribute limit: "<<  max_vert_attrib << " attributes." << std::endl;
 
-    //glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN|GLFW_CURSOR_DISABLED);
+    glfwSetCursorPosCallback(window, CursorCallBack);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN|GLFW_CURSOR_DISABLED);
 
     std::cout << "OpenGL version: " << glGetString(GL_VERSION) << std::endl;
     std::cout << "GLSL version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
@@ -376,6 +439,8 @@ void OpenGLcontext::RefreshCameraPos()
 {
     glUseProgram(computeProgram);
     glUniform3f(glGetUniformLocation(computeProgram, "camera_pos"), mainCamera.centerPos.x, mainCamera.centerPos[1], mainCamera.centerPos[2]);
+    glUniform2f(glGetUniformLocation(computeProgram, "angle_xy"), mainCamera.yaw, mainCamera.pitch);
+    glUniform3f(glGetUniformLocation(computeProgram, "camera_direction"), mainCamera.direction[0], mainCamera.direction[1], mainCamera.direction[2]);
     
 }
 
@@ -384,6 +449,8 @@ void OpenGLcontext::Loop()
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window))
     {
+        KeyInput();
+
         glUseProgram(computeProgram);
 
         Render();
