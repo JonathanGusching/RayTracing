@@ -42,29 +42,22 @@ void Shader::Compile()
     glGetShaderiv(shader_id, GL_COMPILE_STATUS, &compile_status);
 	if(compile_status != GL_TRUE)
     {
-        /* erreur a la compilation recuperation du log d'erreur */
-        
-        /* on recupere la taille du message d'erreur */
+        /* If cannot compile, write the log in the error stream */
         glGetShaderiv(shader_id, GL_INFO_LOG_LENGTH, &logsize);
-        
-        /* on alloue un espace memoire dans lequel OpenGL ecrira le message */
-        //log = (char*)malloc(logsize + 1);
         
         log=new char[logsize+1];
         if(log == NULL)
         {
             std::cerr << "Unable to allocate memory for compilation error log";
         }
-        /* initialisation du contenu */
         
         glGetShaderInfoLog(shader_id, logsize, &logsize, log);
         
         std::cerr << "Unable to compile shader " << shader_id << " := "<<std::endl
         << log << std::endl;
         
-        /* ne pas oublier de liberer la memoire et notre shader */
         delete(log);
-        glDeleteShader(shader_id);   
+        glDeleteShader(shader_id); // once compiled, it is useless   
     }
     std::cout << "Shader " << shader_id << " compiled." << std::endl;
 

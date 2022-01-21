@@ -30,7 +30,8 @@ class OpenGLcontext
 		int SCREEN_HEIGHT;
 
 		GLFWwindow* window;
-		ObjectManager object_manager;
+		/* the CPU representation of the scene */
+		SceneManager sceneManager;
     	
     	// Mouse position
     	GLdouble xmouse;
@@ -42,6 +43,7 @@ class OpenGLcontext
 		
 		std::vector<Shader*> shaders;
 
+		/* We create a big quad and map a texture to it using a compute shader */
 		GLuint quadIBO;
   		GLuint quadVBO;
   		GLuint quadVAO;
@@ -50,31 +52,29 @@ class OpenGLcontext
 		GLuint program;
 		GLuint computeProgram;
 
-		void AddCube(glm::vec3 pos, GLfloat half_length);
-		void AddSphere(glm::vec3 pos, GLfloat radius);
-
+		/* All the procedures creating an OpenGL window, creating the quad texture,	/ 
+		/  adding shaders (fragment, vertex and compute) and bind them to 			/
+		/  the respective program ID 											   */ 
 		void CreateWindow(std::string windowName, int screen_width, int screen_height);
-
 		void GenerateTexture();
 		void AddShader(const char* file, GLenum type);
 		void CreateRenderProgramAndShaders();
 		void CreateComputeProgram();
-		void Render();
 		void PrepareComputeShader();
 
-		void RefreshCameraPos();
-		
-		void ProcessCameraSpeed();
+		/* Rendering procedure called in the loop */
+		const void Render();
 
-		//To do: more optimised?
+		/* Camera and movement */
+		void RefreshCameraPos();
+		void ProcessCameraSpeed();
 		void MoveRight();
 		void MoveLeft();
 		void MoveForward();
 		void MoveBackward();
 
+		/* Rendering loop, executed at every frame */
 		void Loop();
-		//void GenerateVAO();
-		//void SendToOpenGL(); // It is important to avoid using immediate rendering with modern OGL in order to fully be able to use the GPU
 
 		OpenGLcontext();
 		~OpenGLcontext();

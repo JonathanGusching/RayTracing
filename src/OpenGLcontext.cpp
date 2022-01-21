@@ -26,29 +26,7 @@ void CursorCallBack(GLFWwindow* window, double x, double y)
     context->mainCamera.last_x=x;
     context->mainCamera.last_y=y;
     
-    /*
-    if(context->mainCamera.pitch > 3.1415/2)
-    {
-        context->mainCamera.pitch=3.1415/2;
-    }
-    else if(context->mainCamera.pitch<-3.1415/2)
-    {
-        context->mainCamera.pitch=-3.1415/2;
-    }
-    */
-
-    /*
-    glm::mat3 rot_mat_yaw=glm::mat3(1,0,0,
-                    0,cos(context->mainCamera.yaw),-sin(context->mainCamera.yaw), 
-                    0,sin(context->mainCamera.yaw), cos(context->mainCamera.yaw));
-
-    glm::mat3 rot_mat_pitch=glm::mat3(cos(context->mainCamera.pitch), 0, sin(context->mainCamera.pitch),
-                      0, 1, 0,
-                      -sin(context->mainCamera.pitch), 0, cos(context->mainCamera.pitch));
-    
-    context->mainCamera.direction= rot_mat_pitch*rot_mat_yaw*context->mainCamera.direction;
-    */
-    
+    /* Check rotations */
     context->mainCamera.direction.z = cos(context->mainCamera.yaw) * cos(context->mainCamera.pitch);
     context->mainCamera.direction.x = sin(-context->mainCamera.pitch);
     context->mainCamera.direction.y = sin(context->mainCamera.yaw)*cos(context->mainCamera.pitch);
@@ -129,13 +107,6 @@ void OpenGLcontext::CreateWindow(std::string windowName, int screen_width, int s
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
-    
-    // Enable depth test
-    
-    //glEnable(GL_DEPTH_TEST);
-    
-    // Accept fragment if it closer to the camera than the former one
-    //glDepthFunc(GL_LESS);
 
     //Initializing the Viewport
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
@@ -147,8 +118,7 @@ void OpenGLcontext::CreateWindow(std::string windowName, int screen_width, int s
     std::cout << "THIS: " << this << std::endl;
     glfwSetWindowUserPointer(window, this); // need to access some members of the class in the callback function
     
-    // For a smoother movement, we prefer using pooling
-    //glfwSetKeyCallback(window, KeyInputCallback);
+    // For a smoother movement, we prefer using pooling than a callback fonction
 
     std::cout << "Window initialized" << std::endl;
     
@@ -233,7 +203,7 @@ void OpenGLcontext::GenerateTexture() {
 
     /* ----- Render Context ----- */
 
-    /* Création de la texture */
+    /* Creating texture */
     glGenTextures(1, &quadTextureID);
     glBindTexture(GL_TEXTURE_2D, quadTextureID);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -381,7 +351,7 @@ void OpenGLcontext::CreateComputeProgram()
 
 
 
-void OpenGLcontext::Render()
+const void OpenGLcontext::Render()
 {
 
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);

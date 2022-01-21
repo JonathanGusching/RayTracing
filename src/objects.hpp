@@ -10,23 +10,28 @@ class Object;
 class Cube;
 class Sphere;
 
-class ObjectManager
+class Scene
+{
+public:
+	char* name;
+	std::vector<Object> objects;
+
+	void Reset();
+	Scene(){}
+	~Scene(){}
+};
+
+class SceneManager
 {
 	public:
-		int numberOfStaticObjects;
-		int numberOfDynamicObjects;
 		
-		std::vector<GLfloat> staticVertices; // for the objects that rarely change (static balls, cubes, etc...)
-		std::vector<GLuint> staticIndices;
-		std::vector<Object> staticObjects;
+		Scene currentScene;
 
-		std::vector<GLfloat> dynamicVertices; // for the ones whose shape can change, or that can be translated/rotated
-		std::vector<GLuint> dynamicIndices;
-		std::vector<Object> dynamicObjects;
+		void AddObject(Object &object);
+		void OpenScene(const char* file);
+		void CreateScene(const char* file, std::vector<Object> objects);
 
-		void AddObject(GLenum type,Object &object);
-
-		ObjectManager():numberOfStaticObjects(0),numberOfDynamicObjects(0){}
+		SceneManager(){}
 };
 
 class Object

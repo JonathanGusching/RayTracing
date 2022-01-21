@@ -24,6 +24,7 @@ const vec3 ambient = vec3(0.6, 0.8, 1.0) * intensity / gamma;
 
 /************************************/
 /*        STRUCTURES SECTION         /
+/*           BASIC TOOLS             /
 /************************************/
 
 struct Material
@@ -41,32 +42,14 @@ struct Ray
   vec3 direction; // direction
 };
 
-struct Sphere
+Ray CreateRay(vec3 origin, vec3 direction)
 {
-  vec3 origin; // origin point
-  float radius; // radius
-  Material material;
-};
+  Ray ray;
+  ray.origin=origin;
+  ray.direction=direction;
 
-struct Cube
-{
-  vec3 min;
-  vec3 max;
-  vec3 up;
-  Material material;
-};
-
-struct Triangle
-{
-  vec3 vertices[3];
-  Material material;
-};
-
-struct Plane
-{
-  vec3 normal;
-  Material material;
-};
+  return ray;
+}
 
 struct Hit
 {
@@ -85,21 +68,116 @@ Hit CreateHit()
   return hit;
 }
 
+
+struct Light {
+    vec3 color;
+    vec3 direction;
+};
+
+
 struct LightSource
 {
   vec3 position;
 };
 
-LightSource lights[10];
+/************************************/
+/*        STRUCTURES SECTION         /
+/*        ALL THE PRIMITIVES         /
+/************************************/
 
-float Distance_2(vec3 pt1, vec3 pt2)
+struct Sphere
 {
-  return dot(pt1-pt2,pt1-pt2);
+  vec3 origin; // origin point
+  float radius; // radius
+  Material material;
+};
+
+Sphere CreateSphere(float radius, vec3 origin, Material mat)
+{
+  Sphere sphere;
+  sphere.radius=radius;
+  sphere.origin=origin;
+  sphere.material= mat;
+
+  return sphere;
 }
+
+
+struct Cylinder
+{
+  vec3 origin;
+  float radius;
+  float height;
+  vec3 up;
+  Material material;
+};
+
+struct Torus
+{
+  vec3 origin;
+  vec3 up;
+  float radius;
+  float section;
+};
+
+struct Cube
+{
+  vec3 min;
+  vec3 max;
+  vec3 up;
+  Material material;
+};
+
+struct Triangle
+{
+  vec3 vertices[3];
+  Material material;
+};
+
+Triangle CreateTriangle(vec3 vert1, vec3 vert2, vec3 vert3)
+{
+  Triangle tri;
+  tri.vertices[0]=vert1;
+  tri.vertices[1]=vert2;
+  tri.vertices[2]=vert3;
+  return tri;
+}
+
+struct Tetrahedron
+{
+  Triangle triangles[4];
+};
+
+struct Plane
+{
+  vec3 origin;
+  vec3 normal;
+  Material material;
+};
+
+
 
 /***************************************/
 /*        INTERSECTIONS SECTION         /
 /***************************************/
+
+/*      PLANE      */
+bool Intersect(Ray ray, Plane plane, inout Hit rayHit)
+{
+  float len = dot(plane.origin - ray.origin, plane.normal) / dot(ray.direction, plane.normal);
+  if(len >= 0.0 && len < rayHit.distance)
+  {
+    rayHit.distance=len;
+    if(dot(plane.origin - ray.origin, plane.normal) >=0)
+      rayHit.normal = -plane.normal;
+    else
+      rayHit.normal = plane.normal;
+    rayHit.material=plane.material;
+    return true;
+  }
+  return false;
+}
+
 
 /*
 float tmin, tmax, tymin, tymax, tzmin, tzmax;
@@ -150,6 +228,35 @@ vec3 cubeNml(vec3 i, vec3 bmin, vec3 bmax) {
 }
 
 
+/*
+bool Intersect(Ray ray, Cube cube, inout Hit rayHit)
+{   
+    float tx1 = (cube.min.x - ray.origin.x) / ray.direction.x;
+    float tx2 = (cube.max.x - ray.origin.x) / ray.direction.x;
+
+    float tmin = min(tx1, tx2);
+    float tmax = max(tx1, tx2);
+
+    float ty1 = (cube.min.y - ray.origin.y) / ray.direction.y;
+    float ty2 = (cube.max.y - ray.origin.y) / ray.direction.y;
+
+    tmin = max(tmin, min(ty1, ty2));
+    tmax = min(tmax, max(ty1, ty2));
+
+    float tz1 = (cube.min.z - ray.origin.z) / ray.direction.z;
+    float tz2 = (cube.min.z - ray.origin.z) / ray.direction.z;
+
+    tmin = max(tmin, min(tz1, tz2));
+    tmax = min(tmax, max(tz1, tz2));
+
+    if(tmax >= tmin)
+    {
+      rayHit.distance = tmin;
+      rayHit.normal = cubeNml(ray.origin + tmin * ray.direction, cube.min, cube.max);
+      rayHit.material=cube.material;
+      return true;
+    }
+}*/
 
 bool Intersect(Ray ray, Cube cube, inout Hit rayHit)
 {   
@@ -179,7 +286,6 @@ bool Intersect(Ray ray, Cube cube, inout Hit rayHit)
       return true;
     }
 }
-
 /*      TRIANGLE      */
 // Möller-Trumbore
 bool Intersect(Ray ray, Triangle triangle, inout Hit rayHit) {
@@ -220,6 +326,77 @@ bool Intersect(Ray ray, Triangle triangle, inout Hit rayHit) {
   }
   return false;
 }
+/*      TETRAHEDRON   */
+bool Intersect(Ray ray, Tetrahedron tetra, inout Hit rayHit)
+{
+  bool intersect=false;
+  for(int i=0; i<4; ++i)
+  {
+    intersect = intersect || Intersect(ray, tetra.triangles[i], rayHit);
+  }
+  return intersect;
+}
+
+/*      CYLINDER      */
+bool Intersect(Ray ray, Cylinder cylinder, inout Hit rayHit)
+{
+  // Solving At^2 + Bt + C = 0, with ray.origin + t * ray.direction the point of intersection
+  float dot_u_d = dot(cylinder.up, ray.direction);
+  vec3 projection = ray.origin - cylinder.origin - dot(cylinder.up, ray.origin - cylinder.origin) * cylinder.up;
+  float A= dot(ray.direction - dot_u_d * cylinder.up, ray.direction - dot_u_d * cylinder.up); // squared norm
+  float B=2 * dot(ray.direction - dot_u_d * cylinder.up,
+                  projection );
+  float C= dot(projection, projection) - cylinder.radius * cylinder.radius; 
+  
+  float delta = B*B - 4 * A * C;
+  float t1=0, t2=0, t3=0, t4=0;
+  float t_candidates[4]={INF, INF, INF, INF};
+  if(delta >=0)
+  {
+    t1= (-B - sqrt(delta))/(2*A);
+    t2= (-B + sqrt(delta))/(2*A);
+
+    if(t1 >0.0 && ( dot(cylinder.up, ray.origin + ray.direction * t1 - cylinder.origin) > 0 
+      && dot(cylinder.up, ray.origin + ray.direction * t1 - cylinder.origin - cylinder.height * cylinder.up) < 0  ))
+      t_candidates[0] = t1;
+    
+    if(t2>0.0  && (dot(cylinder.up, ray.origin + ray.direction * t2 - cylinder.origin) > 0 
+      && dot(cylinder.up, ray.origin + ray.direction * t2 - cylinder.origin - cylinder.height * cylinder.up) < 0  ))
+      t_candidates[1] = t2;
+
+    Hit planeHit = CreateHit();
+    
+    if(Intersect(ray, Plane(cylinder.origin + cylinder.up * cylinder.height, cylinder.up, cylinder.material), planeHit) 
+        && dot(ray.origin + planeHit.distance * ray.direction - cylinder.origin - cylinder.up * cylinder.height,
+                                    ray.origin + planeHit.distance * ray.direction - cylinder.origin - cylinder.up * cylinder.height) < cylinder.radius * cylinder.radius)
+    {
+      t_candidates[2]=planeHit.distance;
+    }
+    if(Intersect(ray, Plane(cylinder.origin, -cylinder.up, cylinder.material), planeHit)
+      && dot(ray.origin + planeHit.distance * ray.direction - cylinder.origin, ray.origin + planeHit.distance * ray.direction - cylinder.origin) < cylinder.radius * cylinder.radius)
+    {
+      t_candidates[3]=planeHit.distance;
+    }
+
+    float t=min(min(t_candidates[0], t_candidates[1]), min(t_candidates[2], t_candidates[3]));
+    if(t < rayHit.distance)
+    {
+      rayHit.material=cylinder.material;
+      rayHit.distance=t;
+      vec3 hitPoint=(ray.origin + rayHit.distance * ray.direction);
+
+      if(t==t_candidates[0] || t==t_candidates[1])
+        rayHit.normal = normalize((hitPoint-cylinder.origin) - dot((hitPoint-cylinder.origin), cylinder.up) * cylinder.up );
+      else if(t==t_candidates[2])
+        rayHit.normal = cylinder.up;
+      else
+        rayHit.normal = -cylinder.up;
+      return true;
+    }
+  }
+  return false;
+}
+
 
 /*      SPHERE      */
 bool Intersect(Ray ray, Sphere sphere, inout Hit rayHit) {
@@ -247,45 +424,7 @@ bool Intersect(Ray ray, Sphere sphere, inout Hit rayHit) {
     }
 }
 
-/*      PLANE      */
-bool Intersect(Ray ray, Plane plane, inout Hit rayHit)
-{
-  float len = -dot(ray.origin, plane.normal) / dot(ray.direction, plane.normal);
-  if(len >= 0.0 && len < rayHit.distance)
-  {
-    rayHit = Hit(len, plane.normal, plane.material);
-    return true;
-  }
-  return false;
-}
 
-
-Sphere CreateSphere(float radius, vec3 origin, Material mat)
-{
-  Sphere sphere;
-  sphere.radius=radius;
-  sphere.origin=origin;
-  sphere.material= mat;
-
-  return sphere;
-}
-
-Triangle CreateTriangle(vec3 vert1, vec3 vert2, vec3 vert3)
-{
-  Triangle tri;
-  tri.vertices[0]=vert1;
-  tri.vertices[1]=vert2;
-  tri.vertices[2]=vert3;
-  return tri;
-}
-Ray CreateRay(vec3 origin, vec3 direction)
-{
-  Ray ray;
-  ray.origin=origin;
-  ray.direction=direction;
-
-  return ray;
-}
 
 /******************************************/
 /*        TRACING THE RAY SECTION         /
@@ -293,7 +432,7 @@ Ray CreateRay(vec3 origin, vec3 direction)
 
 Hit ClosestHitPoint(Ray ray, Sphere List[MAX_SIZE], int size)
 {
-  Plane plane=Plane(normalize(vec3(0.0,-1.0,0.0)), Material(0.1,0.0, 0.0, 1.0, vec3(0.2,0.5,0.2)));
+  Plane plane=Plane(vec3(0.0,100.0,0.0), normalize(vec3(0.0,-1.0,0.0)), Material(0.1,0.4, 0.0, 1.0, vec3(0.2,0.9,0.2)));
   vec3 vertices[3];
   vertices[0]=vec3(10.0,-20.0,70.0);
   vertices[1]=vec3(100.0,-20.0,50.0);
@@ -302,10 +441,35 @@ Hit ClosestHitPoint(Ray ray, Sphere List[MAX_SIZE], int size)
   Triangle triangle=Triangle(vertices, Material(0.5,0.5,0.4, 1.0, vec3(1.0,0.0,0.25)));
   
   Cube cube= Cube(vec3(10.0,10.0,10.0), vec3(-10.0,-10.0,-10.0), vec3(0.0,-1.0,0.0), Material(0.9,0.5,0.4, 1.0, vec3(1.0,0.49,0.7)));
+  Cylinder cylinder = Cylinder(vec3(50.0,-20.0,10.0), 10.0, 30.0,normalize(vec3(0.5,1.0,0.0)), 
+                              Material(0.6,0.5,0.4, 1.0, vec3(1.0,0.49,0.7)));
+
+  //Tetrahedron
+  Material mat_test=Material(0.9,0.5,0.4, 1.0, vec3(1.0,0.49,0.7));
+  Tetrahedron tetra;
+  Triangle faces[4];
+  vec3 face1[3] = {vec3(0.0,0.0,0.0), vec3(10.0,-50.0,10.0), vec3(20.0,0.0,0.0)};
+  vec3 face2[3] = {vec3(0.0,0.0,20.0), vec3(10.0,-50.0,10.0), vec3(20.0,0.0,0.0)};
+  vec3 face3[3] = {vec3(0.0,0.0,0.0), vec3(0.0,0.0,20.0), vec3(10.0,-50.0,10.0)};
+
+  vec3 face4[3] = {vec3(0.0,0.0,20.0), vec3(20.0,0.0,0.0), vec3(0.0,0.0,0.0)};
+
+  faces[0]=Triangle(face1, mat_test);
+  faces[1]=Triangle(face2, mat_test);
+  faces[2]=Triangle(face3, mat_test);
+  faces[3]=Triangle(face4, mat_test);
+
+  tetra.triangles[0]= faces[0];
+  tetra.triangles[1]= faces[1];
+  tetra.triangles[2]= faces[2];
+  tetra.triangles[3]= faces[3];
+  //
 
   Hit hit=CreateHit();
+  Intersect(ray, cylinder, hit);
   Intersect(ray, triangle, hit);
-  //Intersect(ray, cube, hit);
+  // Intersect(ray, cube, hit);
+  Intersect(ray, tetra, hit);
   //Intersect(ray, plane, hit);
   
   for(int i=0;i<size;i++)
@@ -317,11 +481,6 @@ Hit ClosestHitPoint(Ray ray, Sphere List[MAX_SIZE], int size)
 }
 
 
-struct Light {
-    vec3 color;
-    vec3 direction;
-};
-
 
 /**********************************************/
 /*        COMPUTING THE IMAGE SECTION         /
@@ -329,32 +488,28 @@ struct Light {
 
 Light light = Light(vec3(1.0) * intensity, normalize(vec3(1.0, 0.0, 0.0)));
 
+
+// Faire une liste de rayons à traiter : réflexion + réfraction, à base d'un unique facteur de fresnel.
 vec3 Radiance(Ray input_ray, Sphere list[MAX_SIZE], int size)
 {
   vec3 color=vec3(0.0);
   vec3 fresnel=vec3(0.0);
   vec3 mask=vec3(1.0);
-  for(int i=0; i<REFLECTION_NUMBER; ++i)
-  {
-    Hit intersection=ClosestHitPoint(input_ray, list, size);
-    // POOF we touch an object
-    if(intersection.material.transparency > 0.0f)
-    {
-      vec3 attenuated_color=vec3(1.0,1.0,1.0);
-      // TODO TO DO: gérer l'orientation
-      float refraction_ratio = 1.0 / intersection.material.n;
-      float cos_t = min(dot(-ray.direction, intersection.normal),1.0);
-      float sin_t = sqrt(1.0 - cos_t * cos_t);
 
-      bool cannot_refract = hit.material.n * sin_t > 1.0;
-      vec3 direction;
-    }
+  float old_refraction_index=1.0;
+  vec3 refr_mask=vec3(1.0);
+  
+  for(int i=0; i<REFLECTION_NUMBER; ++i)
+  {    
+    Hit intersection=ClosestHitPoint(input_ray, list, size);
+    Hit refracted=intersection;
+    // POOF we touch an object
     if(intersection.material.diffuse > 0.0f || intersection.material.shininess > 0.0f)
     {
       // Reflectance - using Schlick's approximation
       vec3 r0 = intersection.material.color * intersection.material.shininess;
       float hv = clamp(dot(intersection.normal, -input_ray.direction), 0.0, 1.0);
-      fresnel = r0 + (1.0 - r0) * pow(1.0 - hv, 5.0);
+      fresnel = r0 + (1.0 - r0) *  pow(1.0 - hv, 5.0);
       mask *= fresnel;
 
       if (ClosestHitPoint(Ray(input_ray.origin + intersection.distance * input_ray.direction + epsilon * light.direction, light.direction), 
@@ -370,7 +525,7 @@ vec3 Radiance(Ray input_ray, Sphere list[MAX_SIZE], int size)
     }
 
     // Otherwise we touch the sky
-    else
+    else if(intersection.material.diffuse <= 0.0f && intersection.material.shininess <= 0.0f)
     {
       vec3 spotlight = vec3(1e6) * pow(abs(dot(input_ray.direction, light.direction)), 250.0);
       color += mask * (ambient + spotlight); 
@@ -429,18 +584,18 @@ void main() {
 
   Sphere test_s[MAX_SIZE];
   
-  Sphere test_sphere=CreateSphere(0.01*max_y, vec3(6.0,-6.0,10.0), Material(0.5,0.5,0.1, 1.33, vec3(1.0,0.0,0.25)));
-  Sphere test_sphere2=CreateSphere(0.01*max_y,vec3(9.0,-9.0,20.0), Material(0.025,0.3,0.0, 2.0, vec3(0.1,1.0,0.0)));
-  Sphere test_sphere3=CreateSphere(0.01*max_y,vec3(6.0,-19.0,30.0), Material(0.1,0.8,0.9, 1.5, vec3(1.0,0.1,1.0)));
-  Sphere test_sphere4=CreateSphere(0.01*max_y, vec3(7.0,-10.0,100.0), Material(0.0,0.6,0.0, 1.0, vec3(0.0,0.0,0.7)));
-  Sphere test_sphere5=CreateSphere(0.01*max_y,vec3(12.0,-12.0,20.0), Material(0.8,0.3,0.3, 1.33, vec3(0.1,0.35,0.1)));
+  Sphere test_sphere=CreateSphere(0.01*max_y, vec3(12.0,-6.0,-20.0), Material(0.0,0.1,1.0, 1.0, vec3(0.1,0.0,0.0)));
+  Sphere test_sphere2=CreateSphere(0.01*max_y,vec3(-27.0,-9.0,20.0), Material(0.025,0.3,0.0, 2.0, vec3(0.1,1.0,0.0)));
+  Sphere test_sphere3=CreateSphere(0.01*max_y,vec3(6.0,-19.0,30.0), Material(0.1,0.0,0.9, 1.5, vec3(1.0,0.1,1.0)));
+  Sphere test_sphere4=CreateSphere(0.01*max_y, vec3(7.0,-50.0,100.0), Material(0.0,0.6,0.0, 1.0, vec3(0.0,0.0,0.7)));
+  Sphere test_sphere5=CreateSphere(0.01*max_y,vec3(-12.0,-12.0,20.0), Material(0.8,0.3,0.3, 1.33, vec3(0.1,0.35,0.1)));
   Sphere test_sphere6=CreateSphere(0.01*max_y,vec3(20.0,-12.0,30.0), Material(0.1,0.8,0.4, 1.25, vec3(0.2,0.57,1.0)));
   
-  Sphere test_sphere7=CreateSphere(0.02*max_y, vec3(66.0,-8.0,10.0), Material(0.5,0.5,0.1, 1.67, vec3(1.0,1.0,0.25)));
+  Sphere test_sphere7=CreateSphere(0.02*max_y, vec3(90.0,-8.0,10.0), Material(0.5,0.5,0.1, 1.67, vec3(1.0,1.0,0.25)));
   Sphere test_sphere8=CreateSphere(0.001*max_y,vec3(9.0,-17.0,20.0), Material(0.025,0.3,0.7, 1.12, vec3(1.0,0.4,0.32)));
-  Sphere test_sphere9=CreateSphere(0.01*max_y,vec3(19.0,-19.0,100.0), Material(0.1,0.8,0.01, 1.0, vec3(0.0,0.1,0.65)));
+  Sphere test_sphere9=CreateSphere(0.01*max_y,vec3(50.0,-19.0,100.0), Material(0.1,0.8,0.01, 1.0, vec3(0.0,0.1,0.65)));
   Sphere test_sphere10=CreateSphere(0.01*max_y, vec3(40.0,-20.0,100.0), Material(0.0,0.6,0.0, 1.9, vec3(0.0,0.0,0.7)));
-  Sphere test_sphere11=CreateSphere(0.01*max_y,vec3(39.0,-12.0,20.0), Material(0.8,0.3,0.0, 3.0, vec3(0.1,0.35,0.6)));
+  Sphere test_sphere11=CreateSphere(0.01*max_y,vec3(-80.0,-12.0,20.0), Material(0.8,0.3,0.0, 3.0, vec3(0.1,0.35,0.6)));
   Sphere test_sphere12=CreateSphere(0.01*max_y,vec3(10.0,-24.0,30.0), Material(0.1,0.8,0.0, 1.27, vec3(0.15,0.05,1.0)));
   
   test_s[0]=test_sphere;
