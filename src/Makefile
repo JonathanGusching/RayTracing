@@ -1,7 +1,7 @@
 CC = gcc
 CXX = g++
 CXXFLAGS = -std=c++2a -fPIC
-RENDERFLAGS= -lGLEW -lOpenGL -lglfw
+RENDERFLAGS= -lGLEW -lOpenGL -lglfw -lstudxml
 ifdef DEBUG
 CXXFLAGS += -g -O0 -Wall -fbounds-check -D_GLIBCXX_DEBUG
 else

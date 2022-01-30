@@ -8,7 +8,8 @@ uniform vec3 camera_pos;
 uniform vec2 angle_xy;
 uniform vec3 camera_direction;
 
-#define REFLECTION_NUMBER 16
+uniform int REFLECTION_NUMBER;
+
 #define INF 10000.0
 #define epsilon 0.01
 #define MAX_SIZE 50

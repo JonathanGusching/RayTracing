@@ -1,0 +1,16 @@
+details/expat/xmlrole.lo: details/expat/xmlrole.c \
+ /usr/include/stdc-predef.h \
+ /usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h \
+ ../xml/details/expat/config.h ../xml/details/config.h \
+ ../xml/details/expat/expat_external.h ../xml/details/expat/internal.h \
+ ../xml/details/expat/xmlrole.h ../xml/details/expat/xmltok.h \
+ ../xml/details/expat/ascii.h
+/usr/include/stdc-predef.h:
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h:
+../xml/details/expat/config.h:
+../xml/details/config.h:
+../xml/details/expat/expat_external.h:
+../xml/details/expat/internal.h:
+../xml/details/expat/xmlrole.h:
+../xml/details/expat/xmltok.h:
+../xml/details/expat/ascii.h:

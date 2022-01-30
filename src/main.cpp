@@ -8,6 +8,7 @@
 
 #include "shader.hpp"
 
+#include "material.hpp"
 #include "objects.hpp"
 #include "controls.hpp"
 #include "camera.hpp"
@@ -17,8 +18,19 @@
 
 int main()
 {
+    
+    SceneManager sm;
+    
+    Object obj=Object(glm::vec3(0.0,1.0,2.0));
+    Material mat=Material(0.5,0.4,0.0,1.0, glm::vec3(1.0,1.0,1.0));
+    Cube cube=Cube(glm::vec3(0.0,0.0,0.0), glm::vec3(10.0,10.0,10.0), mat );
+    sm.currentScene.AddObject(obj);
+    sm.currentScene.AddObject(cube);
+    sm.ExportScene("../scenes/test.xml");
+    
     OpenGLcontext context;
-
+    
+    context.InitializeLogSystemToFile();
     context.CreateWindow(PROGRAM_NAME,1920,1080);
 
     //Adding the shaders
@@ -37,7 +49,9 @@ int main()
     context.CreateComputeProgram();
 
     /* ----- Run Compute shader ----- */
+    context.SendCurrentScene();
     context.PrepareComputeShader();
+
 
     context.Loop();
 

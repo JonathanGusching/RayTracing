@@ -5,6 +5,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
+#include <ctime> // write to log
+#include <chrono>
 
 //OpenGL
 #include <GL/glew.h>
@@ -14,6 +16,7 @@
 
 // headers
 #include "ray.hpp"
+#include "material.hpp"
 #include "shader.hpp"
 #include "objects.hpp"
 #include "controls.hpp"
@@ -52,6 +55,12 @@ class OpenGLcontext
 		GLuint program;
 		GLuint computeProgram;
 
+		const void InitializeLogSystemToFile();
+		const void WriteToLog(std::string message);
+		const void CloseLog();
+
+		const void SendCurrentScene();
+
 		/* All the procedures creating an OpenGL window, creating the quad texture,	/ 
 		/  adding shaders (fragment, vertex and compute) and bind them to 			/
 		/  the respective program ID 											   */ 
@@ -76,12 +85,15 @@ class OpenGLcontext
 		/* Rendering loop, executed at every frame */
 		void Loop();
 
+		/* Procedure to be called before destroying objects */
+		void FreeMemory();
+
 		OpenGLcontext();
 		~OpenGLcontext();
 
 	private:
 		static void FramebufferSizeCallback(GLFWwindow* window, int width, int height); // callback for window resizing
-		void KeyInput();
+		bool KeyInput();
 		float deltaTime=0.0f;
 		float lastFrame=0.0f;
 		//void key_input_callback(GLFWwindow* window, int key, int scancode, int action, int mods); // callback for key inputs
