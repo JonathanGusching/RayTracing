@@ -8,6 +8,7 @@ void OpenGLcontext::FramebufferSizeCallback(GLFWwindow* window, int width, int h
     glViewport(0, 0, width, height);
 }
 
+// Callback function computing the angle depending on the camera position and mouvement
 void CursorCallBack(GLFWwindow* window, double x, double y)
 {
     OpenGLcontext* context = static_cast<OpenGLcontext*>(glfwGetWindowUserPointer(window));
@@ -66,6 +67,7 @@ bool OpenGLcontext::KeyInput()
     return true;            
 }
 
+/* Move the camera from the actual position */
 void OpenGLcontext::MoveRight()
 {
     mainCamera.Translate(glm::vec3(0.3f,0.0f,0.0f)* mainCamera.cameraSpeed);
@@ -84,6 +86,7 @@ void OpenGLcontext::MoveBackward()
     mainCamera.Translate(-mainCamera.direction * mainCamera.cameraSpeed);
 }
 
+/* Takes the lag into account (deltaTime elapsed) */
 void OpenGLcontext::ProcessCameraSpeed()
 {
     float currentFrame = glfwGetTime();
@@ -92,6 +95,7 @@ void OpenGLcontext::ProcessCameraSpeed()
     mainCamera.cameraSpeed=mainCamera.cameraSpeed * deltaTime;
 }
 
+/* Create the log file*/
 const void OpenGLcontext::InitializeLogSystemToFile()
 {
   freopen( "../logs/log.txt", "w", stderr );
@@ -112,6 +116,7 @@ const void OpenGLcontext::WriteArgs(std::ostream& stream, T message, Args... arg
     WriteArgs(stream, arguments...);
 }
 
+/* The generic message writing function */
 template <class ...Args>
 const void OpenGLcontext::Write(Prefix messageType, std::ostream& stream, Args... arguments)
 {
@@ -130,6 +135,7 @@ const void OpenGLcontext::Write(Prefix messageType, std::ostream& stream, Args..
    
 }
 
+/* Send the scene to render to OpenGL, don't call it often */
 const void OpenGLcontext::SendCurrentScene()
 {
     GLintptr offset=0;
@@ -217,7 +223,7 @@ const void OpenGLcontext::SendCurrentScene()
 
 }
 
-
+/* Create the window context */
 void OpenGLcontext::CreateWindow(std::string windowName, int screen_width, int screen_height)
 {
     SCREEN_WIDTH=screen_width;
@@ -290,6 +296,7 @@ typedef struct _RGBA_ {
   GLfloat Alpha;
 } RGBAValues;
 
+/* The complex bit to generate a screen quad and map the texture to it*/
 void OpenGLcontext::GenerateTexture() {
 
       /* ----- Quad Context ----- */
@@ -377,7 +384,7 @@ void OpenGLcontext::GenerateTexture() {
 }
 
 
-
+/* Adding a shader to the list */
 void OpenGLcontext::AddShader(const char* file, GLenum type)
 {
     shaders.push_back((new Shader(file, type)));
@@ -444,6 +451,7 @@ void OpenGLcontext::CreateRenderProgramAndShaders()
     glEnableVertexAttribArray(posPtr);
 
 }
+/* The compute program, that has to ray trace and everything */
 void OpenGLcontext::CreateComputeProgram()
 {
 
@@ -478,7 +486,7 @@ void OpenGLcontext::CreateComputeProgram()
 }
 
 
-
+/* Called every frame to render the actual screen */
 const void OpenGLcontext::Render()
 {
     /* Render here */
@@ -531,6 +539,7 @@ const void OpenGLcontext::Render()
     glUseProgram(0);
 }
 
+/* Bind the texture */
 void OpenGLcontext::PrepareComputeShader()
 {
     glUseProgram(computeProgram);
@@ -547,6 +556,7 @@ void OpenGLcontext::PrepareComputeShader()
     glUseProgram(0);
 }
 
+/* Send the camera to GPU */
 void OpenGLcontext::RefreshCameraPos()
 {
     glUseProgram(computeProgram);
@@ -556,6 +566,7 @@ void OpenGLcontext::RefreshCameraPos()
     
 }
 
+/* If the user wants to add things to the CPU processing, it's here! It's the "game loop" */
 void OpenGLcontext::Loop()
 {
     /* Loop until the user closes the window */
@@ -574,6 +585,7 @@ void OpenGLcontext::Loop()
     }
 }
 
+/* Don't forget to avoid memory leaks */
 void OpenGLcontext::FreeMemory()
 {
     for(long unsigned int i=0;i<shaders.size();i++)
