@@ -17,6 +17,7 @@ class Cube;
 class Sphere;
 
 #include <string>
+
 #define MAX_NAME_SIZE 32
 
 class Scene
@@ -26,12 +27,14 @@ public:
 	std::vector<Object*> objects;
 
 	void Reset();
+
 	void AddObject(Object &object);
 	
 	Scene(){
 		name="default.xml\0";
 	}
 	~Scene(){
+		//TODO TO DO
 	}
 };
 
@@ -47,7 +50,6 @@ class SceneManager
 		SceneManager(){}
 		~SceneManager(){}
 };
-
 class Object
 {
 	public:
@@ -70,16 +72,40 @@ class Object
 		Object(glm::vec3 pos):centerPos(pos){}
 		Object(){centerPos=glm::vec3(0.0f,0.0f,0.0f);}
 
-		virtual const char* Classname() { return "object";}
+		virtual std::string Classname() { return "Object";}
+		virtual void FromXML(xml::parser & p)
+		{
+			p.next_expect (xml::parser::start_element,"position", xml::content::complex);
+			centerPos=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+
+			p.next_expect (xml::parser::start_element,"material",xml::content::complex);
+			mat=MaterialAttributesFromXML(p);
+			p.next_expect(xml::parser::end_element);
+		}
 		virtual const void ToXML(xml::serializer& s)
 		{
-			s.start_element(Classname());
+			s.start_element("Object");
+			s.attribute("type", "Object");
 			
 			WritePositionToXML(s);
+			MaterialToXML(s, mat);
 			
 			s.end_element();
 		}
 	protected:
+		static Material MaterialAttributesFromXML(xml::parser& p)
+		{
+			Material mat;
+			mat.shininess = p.attribute<float>("shininess");
+			mat.transparency = p.attribute<float>("transparency");
+			mat.diffuse = p.attribute<float>("diffuse");
+			mat.n = p.attribute<float>("n");
+			p.next_expect(xml::parser::start_element, "color",xml::content::complex);
+			mat.color=Vec3FromXML(p);
+			p.next_expect(xml::parser::end_element);
+			return mat;
+		}
 		static void MaterialToXML(xml::serializer& s, Material& mat)
 		{
 			s.start_element("material");
@@ -90,6 +116,13 @@ class Object
 			Vec3ToXML(s, mat.color, "color");
 			s.end_element();
 		}
+		static glm::vec3 Vec3FromXML(xml::parser& p)
+		{
+			float x = p.attribute<float>("x");
+			float y = p.attribute<float>("y");
+			float z = p.attribute<float>("z");
+			return glm::vec3(x,y,z);
+		}
 		static void Vec3ToXML(xml::serializer& s, glm::vec3& vec, const char* name)
 		{
 			s.start_element(name);
@@ -98,7 +131,7 @@ class Object
 			s.attribute("z", vec.z);
 			s.end_element();
 		}
-		void WritePositionToXML(xml::serializer& s)
+		const void WritePositionToXML(xml::serializer& s)
 		{
 			Vec3ToXML(s, centerPos, "position");
 		}
@@ -111,11 +144,29 @@ class Cube:public Object
 		glm::vec3 low;
 		glm::vec3 up;
 
-		virtual const char* Classname() { return "cube";}
+		virtual std::string Classname() { return "Cube";}
+		virtual void FromXML(xml::parser& p)
+		{
+			p.next_expect (xml::parser::start_element,"position", xml::content::complex);
+			centerPos=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+
+			p.next_expect (xml::parser::start_element,"low", xml::content::complex);
+			low=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+
+			p.next_expect (xml::parser::start_element,"up", xml::content::complex);
+			up=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+			
+			p.next_expect (xml::parser::start_element,"material",xml::content::complex);
+			mat=MaterialAttributesFromXML(p);
+			p.next_expect (xml::parser::end_element);
+		}
 		virtual const void ToXML(xml::serializer& s)
 		{
-			s.start_element(Classname());
-			
+			s.start_element("Object");
+			s.attribute("type", Classname());
 			WritePositionToXML(s);
 
 			Vec3ToXML(s, low, "low");
@@ -123,6 +174,11 @@ class Cube:public Object
 			MaterialToXML(s, mat);
 			
 			s.end_element();
+		}
+		Cube():Object()
+		{
+			low=glm::vec3(0.0,0.0,0.0);
+			up=glm::vec3(0.0,0.0,0.0);
 		}
 		Cube(glm::vec3 the_low, glm::vec3 the_up):Object((the_low + the_up)*0.5f)
 		{
@@ -144,10 +200,33 @@ class Triangle:public Object
 		glm::vec3 vert2;
 		glm::vec3 vert3;
 
-		virtual const char* Classname() { return "triangle";}
+		virtual std::string Classname() { return "Triangle";}
+		virtual void FromXML(xml::parser& p)
+		{
+			p.next_expect (xml::parser::start_element,"position", xml::content::complex);
+			centerPos=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+
+			p.next_expect (xml::parser::start_element,"v1", xml::content::complex);
+			vert1=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+
+			p.next_expect (xml::parser::start_element,"v2", xml::content::complex);
+			vert2=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+			
+			p.next_expect (xml::parser::start_element,"v3", xml::content::complex);
+			vert3=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+			
+			p.next_expect (xml::parser::start_element,"material",xml::content::complex);
+			mat=MaterialAttributesFromXML(p);
+			p.next_expect (xml::parser::end_element);
+		}
 		virtual const void ToXML(xml::serializer& s)
 		{
-			s.start_element(Classname());
+			s.start_element("Object");
+			s.attribute("type", Classname());
 			WritePositionToXML(s);
 
 			Vec3ToXML(s, vert1, "v1");
@@ -155,10 +234,13 @@ class Triangle:public Object
 			Vec3ToXML(s, vert3, "v3");
 
 			MaterialToXML(s, mat);
+			s.end_element();
 		}
 		Triangle():Object()
 		{
-
+			vert1 = glm::vec3(0.0,0.0,0.0);
+			vert2 = glm::vec3(0.0,0.0,0.0);
+			vert3 = glm::vec3(0.0,0.0,0.0);
 		}
 
 		Triangle(glm::vec3 v1, glm::vec3 v2, glm::vec3 v3, Material& mat):Object((v1 + v2 + v3)/3.0f, mat)
@@ -173,34 +255,77 @@ class Triangle:public Object
 class Rectangle:public Object
 {
 	public:
-		virtual const char* Classname() { return "rectangle";}
+		virtual std::string Classname() { return "Rectangle";}
 		Rectangle():Object()
 		{
 
 		}
 };
+
+class Cylinder:public Object
+{
+	public:
+		glm::vec3 up;
+		float radius;
+		virtual const void ToXML(xml::serializer& s)
+		{
+			s.start_element("Object");
+			s.attribute("type", Classname());
+			WritePositionToXML(s);
+			Vec3ToXML(s, up, "up");
+			s.start_element("radius");
+			s.attribute("radius", radius);
+			s.end_element();
+			MaterialToXML(s, mat);
+		}
+		virtual std::string Classname(){ return "Cylinder"; }
+
+		Cylinder(glm::vec3 position, glm::vec3 theUp, float rad):Object(position, mat), up(theUp), radius(rad){}
+};
+
 class Sphere:public Object
 {
 	public:
 		GLfloat radius;
 
-		virtual const char* Classname() { return "sphere";}
+		virtual std::string Classname() { return "Sphere";}
+		virtual void FromXML(xml::parser& p)
+		{
+			p.next_expect (xml::parser::start_element,"position", xml::content::complex);
+			centerPos=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+
+			p.next_expect (xml::parser::start_element,"radius", xml::content::complex);
+			radius=p.attribute<float>("radius");
+			p.next_expect (xml::parser::end_element);
+
+			p.next_expect (xml::parser::start_element,"material",xml::content::complex);
+			mat=MaterialAttributesFromXML(p);
+			p.next_expect (xml::parser::end_element);
+		}
 		virtual const void ToXML(xml::serializer& s)
 		{
-			s.start_element(Classname());
+			s.start_element("Object");
+			s.attribute("type", Classname());
 			WritePositionToXML(s);
 
 			s.start_element("radius");
 			s.attribute("radius", radius);
 			s.end_element();
 			
-			MaterialToXML(s, mat);			
+			MaterialToXML(s, mat);	
+			s.end_element();		
+		}
+		Sphere()
+		{
+			radius=0.0f;
+			centerPos=glm::vec3(0.0,0.0,0.0);
 		}
 		Sphere(GLfloat theRadius, glm::vec3 position):Object(position)
 		{
 			radius=theRadius;
 		}
-		Sphere(GLfloat theRadius, glm::vec3 position, Material& mat):Object(position, mat)
+		Sphere(glm::vec3 position, float theRadius, Material& mat):Object(position, mat)
 		{
 			radius=theRadius;
 		}

@@ -55,10 +55,25 @@ class OpenGLcontext
 		GLuint program;
 		GLuint computeProgram;
 
+    	GLuint ssbo;
+		/* Functions for the Log system (to file or to terminal) */
+		/* The log shows the warnings */
 		const void InitializeLogSystemToFile();
-		const void WriteToLog(std::string message);
+		
+		enum Prefix {ERROR_MESS, WARNING_MESS, INFO_MESS};
+	private:
+		template <typename T>
+		const void WriteArgs(std::ostream& stream, T message);
+
+		template <typename T, class ...Args>
+		const void WriteArgs(std::ostream& stream, T message, Args... arguments);
+	public:
+		template <class ...Args>
+		const void Write(Prefix messageType, std::ostream& stream, Args... arguments);
 		const void CloseLog();
 
+
+		/* Client (CPU) sends the scene information to the server (GPU) */
 		const void SendCurrentScene();
 
 		/* All the procedures creating an OpenGL window, creating the quad texture,	/ 

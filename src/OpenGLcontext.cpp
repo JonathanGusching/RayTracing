@@ -95,20 +95,53 @@ void OpenGLcontext::ProcessCameraSpeed()
 const void OpenGLcontext::InitializeLogSystemToFile()
 {
   freopen( "../logs/log.txt", "w", stderr );
-  std::cout << "Error logs written in ../logs/log.txt" << std::endl;
+  Write(INFO_MESS, std::cout, "Error logs written in ../logs/log.txt");
 }
 
 // Need to use C functions to be able to get rid of the last \n character in ctime...
-const void OpenGLcontext::WriteToLog(std::string message)
+template <typename T>
+const void OpenGLcontext::WriteArgs(std::ostream& stream, T message)
+{
+    stream << message << std::endl;
+}
+
+template <typename T, class ...Args>
+const void OpenGLcontext::WriteArgs(std::ostream& stream, T message, Args... arguments)
+{
+    stream << message;
+    WriteArgs(stream, arguments...);
+}
+
+template <class ...Args>
+const void OpenGLcontext::Write(Prefix messageType, std::ostream& stream, Args... arguments)
 {
     char timeCode[30];
     std::time_t t=std::time(nullptr);
     std::strftime(timeCode, 30, "%x %X",std::localtime(&t));
-    std::cerr << "(ERROR) " << "[" << timeCode << "] " << message << std::endl; 
+    switch(messageType)
+    {
+        case(ERROR_MESS):stream << "(ERROR) " << "[" << timeCode << "] "; break;
+        case(WARNING_MESS):stream << "(WARNING) " << "[" << timeCode << "] "; break;
+        case(INFO_MESS):stream << "(INFORMATION) " << "[" << timeCode << "] "; break;
+        default:stream << "(OTHER) " << "[" << timeCode << "] "; break;
+    }
+    WriteArgs(stream, arguments...);
+
+   
 }
+
 const void OpenGLcontext::SendCurrentScene()
 {
     glUniform1i(glGetUniformLocation(computeProgram, "REFLECTION_NUMBER"), 10);
+
+    glGenBuffers(1, &ssbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
+    std::cout << sceneManager.currentScene.objects[0]->Classname() << std::endl;
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Sphere), (sceneManager.currentScene.objects[0]), GL_DYNAMIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
+    Write(INFO_MESS, std::cout, "Taille objects: ",sizeof(sceneManager.currentScene.objects.data() ));
+    Write(INFO_MESS, std::cout, "Taille sphere: ",sizeof(Sphere ));
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
 }
 
 
@@ -120,7 +153,7 @@ void OpenGLcontext::CreateWindow(std::string windowName, int screen_width, int s
     /* Initialize the library */
     if (!glfwInit())
     {
-        WriteToLog("Could not initialize GLFW");
+        Write(ERROR_MESS, std::cout, "Could not initialize GLFW");
     }
 
     /* Create a windowed mode window and its OpenGL context */
@@ -128,7 +161,7 @@ void OpenGLcontext::CreateWindow(std::string windowName, int screen_width, int s
     if (!window)
     {
         glfwTerminate();
-        WriteToLog("Could not create GLFW window");
+        Write(ERROR_MESS, std::cout, "Could not create GLFW window");
     }
 
     /* Make the window's context current */
@@ -145,31 +178,28 @@ void OpenGLcontext::CreateWindow(std::string windowName, int screen_width, int s
     
     // For a smoother movement, we prefer using pooling than a callback fonction
 
-    std::cout << "Window initialized" << std::endl;
+    Write(INFO_MESS, std::cout, "Window initialized");
     
     /* INITIALIZING GLEW */
     GLenum err=glewInit();
     if(GLEW_OK!=err)
     {
-        std::string message="Error while initializing GLEW: ";
-        auto errorMessage=std::string((char*)glewGetErrorString(err));
-        message+=errorMessage;
-        WriteToLog(message);
+        Write(ERROR_MESS, std::cerr, "Error while initializing GLEW: ",glewGetErrorString(err) );
     }
     else
     {
-        std::cout << "GLEW initialized : " << glewGetString(GLEW_VERSION) << std::endl;
+        Write(INFO_MESS, std::cout, "GLEW initialized : ",glewGetString(GLEW_VERSION) );
     }
 
     GLint max_vert_attrib;
     glGetIntegerv(GL_MAX_VERTEX_ATTRIBS,&max_vert_attrib);
-    std::cout<< "Vertex attribute limit: "<<  max_vert_attrib << " attributes." << std::endl;
+    Write(INFO_MESS, std::cout, "Vertex attribute limit: ",  max_vert_attrib, " attributes.");
 
     glfwSetCursorPosCallback(window, CursorCallBack);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN|GLFW_CURSOR_DISABLED);
 
-    std::cout << "OpenGL version: " << glGetString(GL_VERSION) << std::endl;
-    std::cout << "GLSL version: " << glGetString(GL_SHADING_LANGUAGE_VERSION) << std::endl;
+    Write(INFO_MESS, std::cout, "OpenGL version: ", glGetString(GL_VERSION));
+    Write(INFO_MESS, std::cout,"GLSL version: ", glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 }
 
@@ -192,7 +222,7 @@ void OpenGLcontext::GenerateTexture() {
       /* ----- Quad Context ----- */
     RGBAValues * quadTexture = new RGBAValues[SCREEN_WIDTH * SCREEN_HEIGHT];
     CoordinatesSet * quadVertex = new CoordinatesSet[4];
-    unsigned short int * quadIndex = new unsigned short int[3];
+    unsigned short int * quadIndex = new unsigned short int[4];
 
     quadVertex[0].x = -1.0f;
     quadVertex[0].y = 1.0f;
@@ -293,7 +323,7 @@ void OpenGLcontext::CreateRenderProgramAndShaders()
 {
     if((program=glCreateProgram())==0)
     {
-        WriteToLog("Could not create render program");
+        Write(WARNING_MESS, std::cout, "Could not create render program");
         return;
     }
 
@@ -304,14 +334,12 @@ void OpenGLcontext::CreateRenderProgramAndShaders()
         GLenum error=0;
         if(shaders[i]->type!=GL_COMPUTE_SHADER)
         {
-            std::cout << "ID: " << shaders[i]->shader_id << std::endl;
             glAttachShader(program, shaders[i]->shader_id);
-
             error=glGetError();
             switch(error)
             {
-                case(GL_INVALID_VALUE):WriteToLog("Program or shader isn't a value generated by OpenGL"); break;
-                case(GL_INVALID_OPERATION):WriteToLog("Program or shader is not a program/shader object"); break;
+                case(GL_INVALID_VALUE):Write(WARNING_MESS, std::cout, "Program or shader isn't a value generated by OpenGL"); break;
+                case(GL_INVALID_OPERATION):Write(WARNING_MESS, std::cout, "Program or shader is not a program/shader object"); break;
             
             }
         }
@@ -348,7 +376,7 @@ void OpenGLcontext::CreateComputeProgram()
 
     if((computeProgram=glCreateProgram())==0)
     {
-        WriteToLog("Could not create compute program");
+        Write(ERROR_MESS, std::cerr, "Could not create compute program");
         return;
     }
 
@@ -364,8 +392,8 @@ void OpenGLcontext::CreateComputeProgram()
             error=glGetError();
             switch(error)
             {
-                case(GL_INVALID_VALUE):WriteToLog("Program or shader isn't a value generated by OpenGL"); break;
-                case(GL_INVALID_OPERATION):WriteToLog("Program or shader is not a program/shader object"); break;
+                case(GL_INVALID_VALUE):Write(WARNING_MESS, std::cout, "Program or shader isn't a value generated by OpenGL"); break;
+                case(GL_INVALID_OPERATION):Write(WARNING_MESS, std::cout, "Program or shader is not a program/shader object"); break;
             }
         }
     }
@@ -380,16 +408,24 @@ void OpenGLcontext::CreateComputeProgram()
 
 const void OpenGLcontext::Render()
 {
-
-    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
-
     /* Render here */
     glClear(GL_COLOR_BUFFER_BIT);
 
     // Update the texture
     glUseProgram(computeProgram);
+
+    //PROBLEME SSBO: ?!
+    int ssbo_binding = 1;
+    int block_index = glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "sphereLayout");
+    glShaderStorageBlockBinding(computeProgram, block_index, ssbo_binding );
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo_binding, ssbo);
+
     glDispatchCompute(SCREEN_WIDTH/16, SCREEN_HEIGHT/16, 1);
 
+    glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
+
+
+    
     // Actual Render
     glUseProgram(program);    
     
@@ -404,11 +440,6 @@ const void OpenGLcontext::Render()
     
     /* Poll and process events */
     glfwPollEvents();
-    
-    if(glGetError()!=0)
-    {
-        WriteToLog("OpenGL RENDERING ERROR");
-    }
 
     /* Double buffer : Swap front and back buffers */
     glfwSwapBuffers(window);
@@ -461,7 +492,7 @@ void OpenGLcontext::Loop()
 
 void OpenGLcontext::FreeMemory()
 {
-    for(auto i=0;i<shaders.size();i++)
+    for(long unsigned int i=0;i<shaders.size();i++)
     {
         delete(shaders[i]);
     }

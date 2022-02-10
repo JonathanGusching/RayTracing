@@ -28,6 +28,7 @@ const vec3 ambient = vec3(0.6, 0.8, 1.0) * intensity / gamma;
 /*           BASIC TOOLS             /
 /************************************/
 
+
 struct Material
 {
   float shininess;
@@ -89,8 +90,8 @@ struct LightSource
 struct Sphere
 {
   vec3 origin; // origin point
-  float radius; // radius
   Material material;
+  float radius; // radius
 };
 
 Sphere CreateSphere(float radius, vec3 origin, Material mat)
@@ -119,6 +120,7 @@ struct Torus
   vec3 up;
   float radius;
   float section;
+  Material mat;
 };
 
 struct Cube
@@ -156,6 +158,13 @@ struct Plane
   Material material;
 };
 
+
+
+
+layout(std430, binding = 1) readonly buffer sphereLayout
+{
+    Sphere spheres_SSBO[];
+};
 
 
 /***************************************/
@@ -339,6 +348,7 @@ bool Intersect(Ray ray, Tetrahedron tetra, inout Hit rayHit)
 }
 
 /*      CYLINDER      */
+/* Lots of maths      */
 bool Intersect(Ray ray, Cylinder cylinder, inout Hit rayHit)
 {
   // Solving At^2 + Bt + C = 0, with ray.origin + t * ray.direction the point of intersection
@@ -464,12 +474,12 @@ Hit ClosestHitPoint(Ray ray, Sphere List[MAX_SIZE], int size)
   tetra.triangles[1]= faces[1];
   tetra.triangles[2]= faces[2];
   tetra.triangles[3]= faces[3];
-  //
 
   Hit hit=CreateHit();
   Intersect(ray, cylinder, hit);
   Intersect(ray, triangle, hit);
-  // Intersect(ray, cube, hit);
+  //Intersect(ray, cubes_SSBO[0], hit);
+  Intersect(ray, spheres_SSBO[0], hit);
   Intersect(ray, tetra, hit);
   //Intersect(ray, plane, hit);
   
@@ -500,19 +510,20 @@ vec3 Radiance(Ray input_ray, Sphere list[MAX_SIZE], int size)
   float old_refraction_index=1.0;
   vec3 refr_mask=vec3(1.0);
   
+  // Loop on bounces, iteration replaces recursion
   for(int i=0; i<REFLECTION_NUMBER; ++i)
   {    
-    Hit intersection=ClosestHitPoint(input_ray, list, size);
-    Hit refracted=intersection;
+    Hit intersection=ClosestHitPoint(input_ray, list, size); // What is the closest object intersected?
     // POOF we touch an object
     if(intersection.material.diffuse > 0.0f || intersection.material.shininess > 0.0f)
     {
       // Reflectance - using Schlick's approximation
       vec3 r0 = intersection.material.color * intersection.material.shininess;
       float hv = clamp(dot(intersection.normal, -input_ray.direction), 0.0, 1.0);
-      fresnel = r0 + (1.0 - r0) *  pow(1.0 - hv, 5.0);
+      fresnel = r0 + (1.0 - r0) *  pow(1.0 - hv, 5.0); // said Schlick's approximation
       mask *= fresnel;
 
+      // Compute intersection with the light
       if (ClosestHitPoint(Ray(input_ray.origin + intersection.distance * input_ray.direction + epsilon * light.direction, light.direction), 
         list, size).distance >= INF) 
       {
@@ -522,13 +533,13 @@ vec3 Radiance(Ray input_ray, Sphere list[MAX_SIZE], int size)
       }
       // We reflect the initial ray
       vec3 reflection = reflect(input_ray.direction, intersection.normal);
+      // The new reflected ray is here
       input_ray = Ray(input_ray.origin + intersection.distance * input_ray.direction + epsilon * reflection, reflection);  
     }
-
     // Otherwise we touch the sky
     else if(intersection.material.diffuse <= 0.0f && intersection.material.shininess <= 0.0f)
     {
-      vec3 spotlight = vec3(1e6) * pow(abs(dot(input_ray.direction, light.direction)), 250.0);
+      vec3 spotlight = vec3(1e6) * pow(abs(dot(input_ray.direction, light.direction)), 250.0); // simulates an ambient light
       color += mask * (ambient + spotlight); 
       break; // It is useless to iterate any longer
     }
@@ -566,16 +577,22 @@ void main() {
   float yaw=angle_xy[0];
   float pitch=angle_xy[1];
 
-  mat3 rot_mat_yaw=mat3(1,0,0,
-                    0,cos(yaw),-sin(yaw), 
-                    0,sin(yaw), cos(yaw));
+  mat4 D=mat4(1,0,0,-camera_pos.x,
+          0,1,0,-camera_pos.y,
+          0,0,1,-camera_pos.z,
+          0,0,0,1);
 
-  mat3 rot_mat_pitch=mat3(cos(pitch), 0, sin(pitch),
-                      0, 1, 0,
-                      -sin(pitch), 0, cos(pitch)
-    );
+  mat4 Rx=mat4(1,0,0,0,
+               0,cos(yaw),-sin(yaw),0, 
+               0,sin(yaw), cos(yaw),0,
+               0,0,0,1);
+  mat4 Ry=mat4(cos(pitch), 0, sin(pitch),0,
+                0, 1, 0,0,
+                -sin(pitch), 0, cos(pitch),0,
+                0,0,0,1);
+  mat4 T=(D)*(Rx)*(Ry);
 
-  vec3 temp=rot_mat_pitch * rot_mat_yaw * vec3(x*max_x, y*max_y, 10*max_y);
+  vec3 temp=(T * vec4(x*max_x, y*max_y, 10*max_y,1.0)).xyz;
 
   vec3 vec_dir=  (normalize(temp));
   
@@ -585,7 +602,7 @@ void main() {
 
   Sphere test_s[MAX_SIZE];
   
-  Sphere test_sphere=CreateSphere(0.01*max_y, vec3(12.0,-6.0,-20.0), Material(0.0,0.1,1.0, 1.0, vec3(0.1,0.0,0.0)));
+  Sphere test_sphere=CreateSphere(0.01*max_y, vec3(12.0,-6.0,-20.0), Material(0.0,1.0,0.0, 0.0, vec3(1.0,1.0,1.0)));
   Sphere test_sphere2=CreateSphere(0.01*max_y,vec3(-27.0,-9.0,20.0), Material(0.025,0.3,0.0, 2.0, vec3(0.1,1.0,0.0)));
   Sphere test_sphere3=CreateSphere(0.01*max_y,vec3(6.0,-19.0,30.0), Material(0.1,0.0,0.9, 1.5, vec3(1.0,0.1,1.0)));
   Sphere test_sphere4=CreateSphere(0.01*max_y, vec3(7.0,-50.0,100.0), Material(0.0,0.6,0.0, 1.0, vec3(0.0,0.0,0.7)));

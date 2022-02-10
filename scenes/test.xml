@@ -1,13 +1,9 @@
 <scene name="default.xml">
-  <object>
-    <position x="0" y="1" z="2"/>
-  </object>
-  <cube>
-    <position x="5" y="5" z="5"/>
-    <low x="0" y="0" z="0"/>
-    <up x="10" y="10" z="10"/>
+  <Object type="Sphere">
+    <position x="0" y="0" z="0"/>
+    <radius radius="90"/>
     <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
-      <color x="1" y="1" z="1"/>
+      <color x="1" y="0" z="0"/>
     </material>
-  </cube>
+  </Object>
 </scene>
