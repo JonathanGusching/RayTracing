@@ -3,8 +3,6 @@
 
 #include <glm/glm.hpp>
 
-#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtc/type_ptr.hpp>
 
 class Camera:public Object
 {
@@ -28,7 +26,7 @@ class Camera:public Object
 			up=theUp;
 			pitch=0;
 			yaw=0;
-			cameraSpeed=5.0f;
+			cameraSpeed=7.0f;
 		}
 
 		Camera():Object()
@@ -37,7 +35,7 @@ class Camera:public Object
 			up=glm::vec3(0.0,-1.0,0.0);
 			pitch=0;
 			yaw=0;
-			cameraSpeed=5.0f;
+			cameraSpeed=7.0f;
 		}
 
 		~Camera()

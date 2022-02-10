@@ -108,9 +108,8 @@ Sphere CreateSphere(float radius, vec3 origin, Material mat)
 struct Cylinder
 {
   vec3 origin;
-  float radius;
-  float height;
   vec3 up;
+  float radius;
   Material material;
 };
 
@@ -163,9 +162,19 @@ struct Plane
 
 layout(std430, binding = 1) readonly buffer sphereLayout
 {
-    Sphere spheres_SSBO[];
+  int nb_Spheres;
+  float spheres_SSBO[];
 };
-
+layout(std430, binding = 2) readonly buffer triangleLayout
+{
+  int nb_Triangles;
+  float triangles_SSBO[];
+};
+layout(std430, binding = 3) readonly buffer cylinderLayout
+{
+  int nb_Cylinders;
+  float cylinders_SSBO[];
+};
 
 /***************************************/
 /*        INTERSECTIONS SECTION         /
@@ -351,11 +360,17 @@ bool Intersect(Ray ray, Tetrahedron tetra, inout Hit rayHit)
 /* Lots of maths      */
 bool Intersect(Ray ray, Cylinder cylinder, inout Hit rayHit)
 {
+
+  float height=sqrt(dot(cylinder.up - cylinder.origin, cylinder.up - cylinder.origin));
+  vec3 norm_up=normalize(-cylinder.origin+cylinder.up);
+
   // Solving At^2 + Bt + C = 0, with ray.origin + t * ray.direction the point of intersection
-  float dot_u_d = dot(cylinder.up, ray.direction);
-  vec3 projection = ray.origin - cylinder.origin - dot(cylinder.up, ray.origin - cylinder.origin) * cylinder.up;
-  float A= dot(ray.direction - dot_u_d * cylinder.up, ray.direction - dot_u_d * cylinder.up); // squared norm
-  float B=2 * dot(ray.direction - dot_u_d * cylinder.up,
+  float dot_u_d = dot(norm_up, ray.direction);
+
+
+  vec3 projection = ray.origin - cylinder.origin - dot(norm_up, ray.origin - cylinder.origin) * norm_up;
+  float A= dot(ray.direction - dot_u_d * norm_up, ray.direction - dot_u_d * norm_up); // squared norm
+  float B=2 * dot(ray.direction - dot_u_d * norm_up,
                   projection );
   float C= dot(projection, projection) - cylinder.radius * cylinder.radius; 
   
@@ -367,23 +382,23 @@ bool Intersect(Ray ray, Cylinder cylinder, inout Hit rayHit)
     t1= (-B - sqrt(delta))/(2*A);
     t2= (-B + sqrt(delta))/(2*A);
 
-    if(t1 >0.0 && ( dot(cylinder.up, ray.origin + ray.direction * t1 - cylinder.origin) > 0 
-      && dot(cylinder.up, ray.origin + ray.direction * t1 - cylinder.origin - cylinder.height * cylinder.up) < 0  ))
+    if(t1 >0.0 && ( dot(norm_up, ray.origin + ray.direction * t1 - cylinder.origin) > 0 
+      && dot(norm_up, ray.origin + ray.direction * t1 - cylinder.origin - height * norm_up) < 0  ))
       t_candidates[0] = t1;
     
-    if(t2>0.0  && (dot(cylinder.up, ray.origin + ray.direction * t2 - cylinder.origin) > 0 
-      && dot(cylinder.up, ray.origin + ray.direction * t2 - cylinder.origin - cylinder.height * cylinder.up) < 0  ))
+    if(t2>0.0  && (dot(norm_up, ray.origin + ray.direction * t2 - cylinder.origin) > 0 
+      && dot(norm_up, ray.origin + ray.direction * t2 - cylinder.origin - height * norm_up) < 0  ))
       t_candidates[1] = t2;
 
     Hit planeHit = CreateHit();
     
-    if(Intersect(ray, Plane(cylinder.origin + cylinder.up * cylinder.height, cylinder.up, cylinder.material), planeHit) 
-        && dot(ray.origin + planeHit.distance * ray.direction - cylinder.origin - cylinder.up * cylinder.height,
-                                    ray.origin + planeHit.distance * ray.direction - cylinder.origin - cylinder.up * cylinder.height) < cylinder.radius * cylinder.radius)
+    if(Intersect(ray, Plane(cylinder.origin + norm_up * height, norm_up, cylinder.material), planeHit) 
+        && dot(ray.origin + planeHit.distance * ray.direction - cylinder.origin - norm_up * height,
+                                    ray.origin + planeHit.distance * ray.direction - cylinder.origin - norm_up * height) < cylinder.radius * cylinder.radius)
     {
       t_candidates[2]=planeHit.distance;
     }
-    if(Intersect(ray, Plane(cylinder.origin, -cylinder.up, cylinder.material), planeHit)
+    if(Intersect(ray, Plane(cylinder.origin, -norm_up, cylinder.material), planeHit)
       && dot(ray.origin + planeHit.distance * ray.direction - cylinder.origin, ray.origin + planeHit.distance * ray.direction - cylinder.origin) < cylinder.radius * cylinder.radius)
     {
       t_candidates[3]=planeHit.distance;
@@ -397,11 +412,11 @@ bool Intersect(Ray ray, Cylinder cylinder, inout Hit rayHit)
       vec3 hitPoint=(ray.origin + rayHit.distance * ray.direction);
 
       if(t==t_candidates[0] || t==t_candidates[1])
-        rayHit.normal = normalize((hitPoint-cylinder.origin) - dot((hitPoint-cylinder.origin), cylinder.up) * cylinder.up );
+        rayHit.normal = normalize((hitPoint-cylinder.origin) - dot((hitPoint-cylinder.origin), norm_up) * norm_up );
       else if(t==t_candidates[2])
-        rayHit.normal = cylinder.up;
+        rayHit.normal = norm_up;
       else
-        rayHit.normal = -cylinder.up;
+        rayHit.normal = -norm_up;
       return true;
     }
   }
@@ -443,6 +458,7 @@ bool Intersect(Ray ray, Sphere sphere, inout Hit rayHit) {
 
 Hit ClosestHitPoint(Ray ray, Sphere List[MAX_SIZE], int size)
 {
+  /*
   Plane plane=Plane(vec3(0.0,100.0,0.0), normalize(vec3(0.0,-1.0,0.0)), Material(0.1,0.4, 0.0, 1.0, vec3(0.2,0.9,0.2)));
   vec3 vertices[3];
   vertices[0]=vec3(10.0,-20.0,70.0);
@@ -474,19 +490,49 @@ Hit ClosestHitPoint(Ray ray, Sphere List[MAX_SIZE], int size)
   tetra.triangles[1]= faces[1];
   tetra.triangles[2]= faces[2];
   tetra.triangles[3]= faces[3];
-
-  Hit hit=CreateHit();
-  Intersect(ray, cylinder, hit);
+;
+  
   Intersect(ray, triangle, hit);
   //Intersect(ray, cubes_SSBO[0], hit);
-  Intersect(ray, spheres_SSBO[0], hit);
-  Intersect(ray, tetra, hit);
-  //Intersect(ray, plane, hit);
+  */
   
+  //Intersect(ray, cylinder, hit);
+  Hit hit=CreateHit();
+
+  for(int i=0; i<nb_Cylinders; i++)
+  {
+    Cylinder cyl=Cylinder(vec3(cylinders_SSBO[0],cylinders_SSBO[1],cylinders_SSBO[2]), 
+                              vec3(cylinders_SSBO[3],cylinders_SSBO[4],cylinders_SSBO[5]), 
+                              cylinders_SSBO[6],
+                              Material(cylinders_SSBO[7],cylinders_SSBO[8], cylinders_SSBO[9], cylinders_SSBO[10], vec3(cylinders_SSBO[11], cylinders_SSBO[12], cylinders_SSBO[13])));
+    Intersect(ray, cyl, hit);
+  }
+  for(int i=0; i<nb_Spheres; i++)
+  {
+    Sphere sphere=Sphere(vec3(spheres_SSBO[11*i],spheres_SSBO[11*i+1],spheres_SSBO[11*i+2]), 
+      Material(spheres_SSBO[11*i+3],spheres_SSBO[11*i+4],spheres_SSBO[11*i+5],spheres_SSBO[11*i+6],vec3(spheres_SSBO[11*i+7],spheres_SSBO[11*i+8],spheres_SSBO[11*i+9])),
+      spheres_SSBO[11*i+10]);  
+    Intersect(ray, sphere, hit);
+  }
+  for(int i=0; i<nb_Triangles; i++)
+  {
+    vec3 vertices[3]={vec3(triangles_SSBO[i*16 + 0],triangles_SSBO[i*16 + 1],triangles_SSBO[i*16 + 2]), 
+      vec3(triangles_SSBO[i*16 + 3],triangles_SSBO[i*16 + 4],triangles_SSBO[i*16 + 5]),
+      vec3(triangles_SSBO[i*16 + 6],triangles_SSBO[i*16 + 7],triangles_SSBO[i*16 + 8])};
+
+    Triangle triangle=Triangle(vertices, 
+      Material(triangles_SSBO[i*16 + 9], triangles_SSBO[i*16 + 10], triangles_SSBO[i*16 + 11], triangles_SSBO[i*16 + 12], vec3(triangles_SSBO[i*16 + 13], triangles_SSBO[i*16 + 14], triangles_SSBO[i*16 + 15])));
+    Intersect(ray, triangle, hit); 
+  }
+  
+  //Intersect(ray, tetra, hit);
+  //Intersect(ray, plane, hit);
+  /*
   for(int i=0;i<size;i++)
   {
     Intersect(ray, List[i], hit);
   }
+  */
 
   return hit;
 }

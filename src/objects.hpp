@@ -7,7 +7,9 @@
 #include "material.hpp"
 
 #include <glm/glm.hpp>
+#include <GL/glew.h>
 #include <GL/gl.h>
+
 
 #include <xml/parser>
 #include <xml/serializer>
@@ -43,8 +45,6 @@ class SceneManager
 	public:
 		
 		Scene currentScene;
-
-		const void CreateScene(const char* name, std::vector<Object> objects);
 		void ImportScene(const char* file);
 		const void ExportScene(const char* file);
 		SceneManager(){}
@@ -92,6 +92,13 @@ class Object
 			MaterialToXML(s, mat);
 			
 			s.end_element();
+		}
+		virtual void ToBuffer(GLintptr& offset)
+		{
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(centerPos));
+		    offset+=12;
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 28 ,&(mat));
+		    offset+=28;
 		}
 	protected:
 		static Material MaterialAttributesFromXML(xml::parser& p)
@@ -236,6 +243,19 @@ class Triangle:public Object
 			MaterialToXML(s, mat);
 			s.end_element();
 		}
+		virtual void ToBuffer(GLintptr& offset)
+		{
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(vert1));
+		    offset+=12;
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(vert2));
+		    offset+=12;
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(vert3));
+		    offset+=12;
+
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 28 ,&(mat));
+		    offset+=28;
+		}
+
 		Triangle():Object()
 		{
 			vert1 = glm::vec3(0.0,0.0,0.0);
@@ -267,26 +287,62 @@ class Cylinder:public Object
 	public:
 		glm::vec3 up;
 		float radius;
+		
+		virtual void FromXML(xml::parser& p)
+		{
+			p.next_expect (xml::parser::start_element,"position", xml::content::complex);
+			centerPos=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+
+			p.next_expect (xml::parser::start_element,"up", xml::content::complex);
+			up=Vec3FromXML(p);
+			p.next_expect (xml::parser::end_element);
+			
+			p.next_expect (xml::parser::start_element,"radius", xml::content::complex);
+			radius=p.attribute<float>("radius");
+			p.next_expect (xml::parser::end_element);
+			
+			p.next_expect (xml::parser::start_element,"material",xml::content::complex);
+			mat=MaterialAttributesFromXML(p);
+			p.next_expect (xml::parser::end_element);
+		}
+
 		virtual const void ToXML(xml::serializer& s)
 		{
 			s.start_element("Object");
 			s.attribute("type", Classname());
+			
 			WritePositionToXML(s);
 			Vec3ToXML(s, up, "up");
+			
 			s.start_element("radius");
 			s.attribute("radius", radius);
 			s.end_element();
+			
 			MaterialToXML(s, mat);
+			s.end_element();
+		}
+		virtual void ToBuffer(GLintptr& offset)
+		{
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(centerPos));
+		    offset+=12;
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(up));
+		    offset+=12;
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 4 ,&(radius));
+		    offset+=4;
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 28 ,&(mat));
+		    offset+=28;
 		}
 		virtual std::string Classname(){ return "Cylinder"; }
-
-		Cylinder(glm::vec3 position, glm::vec3 theUp, float rad):Object(position, mat), up(theUp), radius(rad){}
+		Cylinder(){}
+		Cylinder(glm::vec3 position, glm::vec3 theUp, float rad):Object(position), up(theUp), radius(rad){}
+		Cylinder(glm::vec3 position, glm::vec3 theUp, float rad, Material& mat):Object(position, mat), up(theUp), radius(rad){}
 };
 
 class Sphere:public Object
 {
 	public:
-		GLfloat radius;
+		float radius;
 
 		virtual std::string Classname() { return "Sphere";}
 		virtual void FromXML(xml::parser& p)
@@ -315,6 +371,15 @@ class Sphere:public Object
 			
 			MaterialToXML(s, mat);	
 			s.end_element();		
+		}
+		virtual void ToBuffer(GLintptr& offset)
+		{
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(centerPos));
+		    offset+=12;
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 28 ,&(mat));
+		    offset+=28;
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 4 ,&(radius));
+		    offset+=4;
 		}
 		Sphere()
 		{

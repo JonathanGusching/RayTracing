@@ -55,7 +55,10 @@ class OpenGLcontext
 		GLuint program;
 		GLuint computeProgram;
 
-    	GLuint ssbo;
+    	GLuint ssboSphere;
+    	GLuint ssboTriangle;
+    	GLuint ssboCylinder;
+    	
 		/* Functions for the Log system (to file or to terminal) */
 		/* The log shows the warnings */
 		const void InitializeLogSystemToFile();
@@ -74,6 +77,7 @@ class OpenGLcontext
 
 
 		/* Client (CPU) sends the scene information to the server (GPU) */
+		/* For example send the primitives (triangles, cubes, etc...)	*/
 		const void SendCurrentScene();
 
 		/* All the procedures creating an OpenGL window, creating the quad texture,	/ 

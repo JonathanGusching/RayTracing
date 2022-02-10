@@ -132,16 +132,89 @@ const void OpenGLcontext::Write(Prefix messageType, std::ostream& stream, Args..
 
 const void OpenGLcontext::SendCurrentScene()
 {
+    GLintptr offset=0;
+    int cptSphere=0;
+    int cptCube=0;
+    int cptTriangle=0;
+    int cptCylinder=0;
+
+    for(Object* object: sceneManager.currentScene.objects)
+    {
+        if(object->Classname() == "Sphere")
+        {
+            cptSphere++;
+        }
+        else if(object->Classname()=="Cube")
+        {
+            cptCube++;
+        }
+        else if(object->Classname()=="Triangle")
+        {
+            cptTriangle++;
+        }
+        else if(object->Classname()=="Cylinder")
+        {
+            cptCylinder++;
+        }
+    }
+
     glUniform1i(glGetUniformLocation(computeProgram, "REFLECTION_NUMBER"), 10);
 
-    glGenBuffers(1, &ssbo);
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssbo);
-    std::cout << sceneManager.currentScene.objects[0]->Classname() << std::endl;
-    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(Sphere), (sceneManager.currentScene.objects[0]), GL_DYNAMIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
-    Write(INFO_MESS, std::cout, "Taille objects: ",sizeof(sceneManager.currentScene.objects.data() ));
-    Write(INFO_MESS, std::cout, "Taille sphere: ",sizeof(Sphere ));
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssbo);
+    /* SENDING EACH TYPE OF PRIMITIVE OBJECTS INDIVIDUALLY */
+    /* SPHERES */
+    glGenBuffers(1, &ssboSphere);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboSphere);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 + 44 * cptSphere, NULL, GL_DYNAMIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0 , 4 ,&(cptSphere));
+    offset+=4;
+            
+    for(Object* object : sceneManager.currentScene.objects)
+    {
+        if(object->Classname()=="Sphere")
+            object->ToBuffer(offset);
+    }
+    
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboSphere);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
+
+
+    offset=0;
+    /* TRIANGLES */
+    glGenBuffers(1, &ssboTriangle);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboTriangle);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 + 64 * cptTriangle, NULL, GL_DYNAMIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0 , 4 ,&(cptTriangle));
+    offset+=4;
+            
+    for(Object* object : sceneManager.currentScene.objects)
+    {
+        if(object->Classname()=="Triangle")
+            object->ToBuffer(offset);
+    }
+    
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 2, ssboTriangle);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
+
+    /* CYLINDERS */
+    offset=0;
+    glGenBuffers(1, &ssboCylinder);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboCylinder);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 + 56 * cptCylinder, NULL, GL_DYNAMIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0 , 4 ,&(cptCylinder));
+    offset+=4;
+            
+    for(Object* object : sceneManager.currentScene.objects)
+    {
+        if(object->Classname()=="Cylinder")
+            object->ToBuffer(offset);
+    }
+    
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssboCylinder);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
+
+
+
 }
 
 
@@ -418,7 +491,18 @@ const void OpenGLcontext::Render()
     int ssbo_binding = 1;
     int block_index = glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "sphereLayout");
     glShaderStorageBlockBinding(computeProgram, block_index, ssbo_binding );
-    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo_binding, ssbo);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo_binding, ssboSphere);
+
+    
+    ssbo_binding=2;
+    block_index = glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "triangleLayout");
+    glShaderStorageBlockBinding(computeProgram, block_index, ssbo_binding );
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo_binding, ssboTriangle);
+
+    ssbo_binding=3;
+    block_index = glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "cylinderLayout");
+    glShaderStorageBlockBinding(computeProgram, block_index, ssbo_binding );
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo_binding, ssboCylinder);
 
     glDispatchCompute(SCREEN_WIDTH/16, SCREEN_HEIGHT/16, 1);
 

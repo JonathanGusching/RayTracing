@@ -9,10 +9,6 @@ void Scene::Reset()
 	objects.clear();
 }
 
-const void SceneManager::CreateScene(const char* name, std::vector<Object> objects)
-{
-
-}
 void SceneManager::ImportScene(const char* file)
 {
 	currentScene.Reset();
@@ -37,6 +33,8 @@ void SceneManager::ImportScene(const char* file)
 			{
 				p.next_expect(xml::parser::start_element, "Object",xml::content::complex);
 				std::string objectType=p.attribute("type");
+
+				// Objects need to be dynamic (pointers necessary, they must not be local)
 				if(objectType=="Object")
 				{
 					Object* object = new Object();
@@ -60,6 +58,12 @@ void SceneManager::ImportScene(const char* file)
 					Triangle* triangle= new Triangle();
 					triangle->FromXML(p);
 					currentScene.AddObject(*triangle);
+				}
+				else if(objectType=="Cylinder")
+				{
+					Cylinder* cylinder= new Cylinder();
+					cylinder->FromXML(p);
+					currentScene.AddObject(*cylinder);
 				}
 				p.next_expect(xml::parser::end_element);
 			}

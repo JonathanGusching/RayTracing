@@ -1,7 +1,38 @@
 <scene name="default.xml">
   <Object type="Sphere">
     <position x="0" y="0" z="0"/>
+    <radius radius="50"/>
+    <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
+      <color x="1" y="0" z="0"/>
+    </material>
+  </Object>
+  <Object type="Sphere">
+    <position x="120" y="0" z="0"/>
+    <radius radius="70"/>
+    <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
+      <color x="1" y="0" z="1"/>
+    </material>
+  </Object>
+  <Object type="Sphere">
+    <position x="-140" y="0" z="0"/>
     <radius radius="90"/>
+    <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
+      <color x="1" y="0" z="1"/>
+    </material>
+  </Object>
+  <Object type="Triangle">
+    <position x="0" y="33.3333" z="0"/>
+    <v1 x="0" y="0" z="0"/>
+    <v2 x="100" y="100" z="0"/>
+    <v3 x="-100" y="0" z="0"/>
+    <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
+      <color x="1" y="0" z="0"/>
+    </material>
+  </Object>
+  <Object type="Cylinder">
+    <position x="0" y="20" z="20"/>
+    <up x="0" y="400" z="20"/>
+    <radius radius="80"/>
     <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
       <color x="1" y="0" z="0"/>
     </material>
