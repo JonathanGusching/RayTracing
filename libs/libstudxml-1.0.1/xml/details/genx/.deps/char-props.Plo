@@ -1,6 +1,0 @@
-details/genx/char-props.lo: details/genx/char-props.c \
- /usr/include/stdc-predef.h ../xml/details/genx/genx.h \
- /usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h
-/usr/include/stdc-predef.h:
-../xml/details/genx/genx.h:
-/usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h:
