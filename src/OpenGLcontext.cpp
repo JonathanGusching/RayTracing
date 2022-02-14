@@ -1,7 +1,5 @@
 #include "OpenGLcontext.hpp"
 
-#define VERTEX_BYTE_SIZE 3*sizeof(GLfloat)
-
 // callback function to resize the window
 void OpenGLcontext::FramebufferSizeCallback(GLFWwindow* window, int width, int height)
 {
@@ -20,9 +18,9 @@ void CursorCallBack(GLFWwindow* window, double x, double y)
 
         context->mainCamera.first_time=false;
     }
-    float sensitivity=0.1f;
-    context->mainCamera.yaw+= glm::radians(sensitivity*(context->mainCamera.last_y-y));
-    context->mainCamera.pitch+= glm::radians(sensitivity*(x-context->mainCamera.last_x));
+    float sensitivity=context->mainCamera.sensitivity;
+    context->mainCamera.yaw-= glm::radians(sensitivity*(context->mainCamera.last_y-y));
+    context->mainCamera.pitch-= glm::radians(sensitivity*(x-context->mainCamera.last_x));
 
     context->mainCamera.last_x=x;
     context->mainCamera.last_y=y;
@@ -32,16 +30,27 @@ void CursorCallBack(GLFWwindow* window, double x, double y)
     context->mainCamera.direction.x = sin(-context->mainCamera.pitch);
     context->mainCamera.direction.y = sin(context->mainCamera.yaw)*cos(context->mainCamera.pitch);
     
-    //context->mainCamera.direction=context->mainCamera.direction-context->mainCamera.centerPos;
-
     context->mainCamera.direction=glm::normalize(context->mainCamera.direction);
     
+    context->mainCamera.left.x = -cos(context->mainCamera.yaw) * cos(context->mainCamera.pitch);
+    context->mainCamera.left.z = sin(-context->mainCamera.pitch);
+    context->mainCamera.left.y = sin(context->mainCamera.yaw)*cos(context->mainCamera.pitch);
+
     context->RefreshCameraPos();
 }
 
 /* input pooling */
 bool OpenGLcontext::KeyInput()
 {
+    bool sprint=false;
+    if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+    {
+        sprint=true;
+    }
+    else if(glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE)
+    {
+        sprint=false;
+    }
     if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
     {
         return false;
@@ -57,12 +66,13 @@ bool OpenGLcontext::KeyInput()
 
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
     {
-        MoveForward();
+        MoveForward(sprint);
     }
     else if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
     {
-        MoveBackward();
+        MoveBackward(sprint);
     }
+
     RefreshCameraPos();
     return true;            
 }
@@ -70,20 +80,25 @@ bool OpenGLcontext::KeyInput()
 /* Move the camera from the actual position */
 void OpenGLcontext::MoveRight()
 {
-    mainCamera.Translate(glm::vec3(0.3f,0.0f,0.0f)* mainCamera.cameraSpeed);
+    mainCamera.Translate(-mainCamera.left* mainCamera.cameraSpeed*0.5f);
 }
 void OpenGLcontext::MoveLeft()
 {
-    mainCamera.Translate(glm::vec3(-0.3f,0.0f,0.0f)* mainCamera.cameraSpeed);
-
+    mainCamera.Translate(mainCamera.left * mainCamera.cameraSpeed*0.5f);
 }
-void OpenGLcontext::MoveForward()
+void OpenGLcontext::MoveForward(bool sprint)
 {
-    mainCamera.Translate(mainCamera.direction * mainCamera.cameraSpeed);
+    if(sprint)
+        mainCamera.Translate(mainCamera.direction * (mainCamera.cameraSpeed+mainCamera.cameraSpeed*1.75f));
+    else
+        mainCamera.Translate(mainCamera.direction * mainCamera.cameraSpeed);
 }
-void OpenGLcontext::MoveBackward()
+void OpenGLcontext::MoveBackward(bool sprint)
 {
-    mainCamera.Translate(-mainCamera.direction * mainCamera.cameraSpeed);
+    if(sprint)
+        mainCamera.Translate(-mainCamera.direction * (mainCamera.cameraSpeed+mainCamera.cameraSpeed*1.5f));
+    else
+        mainCamera.Translate(-mainCamera.direction * mainCamera.cameraSpeed);
 }
 
 /* Takes the lag into account (deltaTime elapsed) */
@@ -131,7 +146,6 @@ const void OpenGLcontext::Write(Prefix messageType, std::ostream& stream, Args..
         default:stream << "(OTHER) " << "[" << timeCode << "] "; break;
     }
     WriteArgs(stream, arguments...);
-
    
 }
 
@@ -144,6 +158,8 @@ const void OpenGLcontext::SendCurrentScene()
     int cptTriangle=0;
     int cptCylinder=0;
 
+    /* An unoptimized way to count objects before looping on each of them... only used to generate the size of each buffer
+    To be improved */
     for(Object* object: sceneManager.currentScene.objects)
     {
         if(object->Classname() == "Sphere")
@@ -164,21 +180,21 @@ const void OpenGLcontext::SendCurrentScene()
         }
     }
 
-    glUniform1i(glGetUniformLocation(computeProgram, "REFLECTION_NUMBER"), 10);
+    glUniform1i(glGetUniformLocation(computeProgram, "REFLECTION_NUMBER"), 8);
 
     /* SENDING EACH TYPE OF PRIMITIVE OBJECTS INDIVIDUALLY */
     /* SPHERES */
-    glGenBuffers(1, &ssboSphere);
+    glGenBuffers(1, &ssboSphere); // Generate buffer
 
-    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboSphere);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 + 44 * cptSphere, NULL, GL_DYNAMIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
-    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0 , 4 ,&(cptSphere));
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboSphere); // Bind it (to use it)
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 + 44 * cptSphere, NULL, GL_DYNAMIC_DRAW); // Generate a storage area (cannot use sizeof(class) because there are extra bytes), hence the static constant
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0 , 4 ,&(cptSphere)); // First element of the buffer is the number of objects (here: spheres)
     offset+=4;
             
     for(Object* object : sceneManager.currentScene.objects)
     {
         if(object->Classname()=="Sphere")
-            object->ToBuffer(offset);
+            object->ToBuffer(offset); // otherwise we add all the float values (vertices, material, etc...)
     }
     
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, ssboSphere);
@@ -219,7 +235,22 @@ const void OpenGLcontext::SendCurrentScene()
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 3, ssboCylinder);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
 
-
+    /* CUBES */
+    offset=0;
+    glGenBuffers(1, &ssboCube);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboCube);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 + 56 * cptCube, NULL, GL_DYNAMIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
+    glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0 , 4 ,&(cptCube));
+    offset+=4;
+            
+    for(Object* object : sceneManager.currentScene.objects)
+    {
+        if(object->Classname()=="Cube")
+            object->ToBuffer(offset);
+    }
+    
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 4, ssboCube);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, 0); // unbind
 
 }
 
@@ -283,17 +314,17 @@ void OpenGLcontext::CreateWindow(std::string windowName, int screen_width, int s
 }
 
 typedef struct _COORDS_ {
-  GLfloat x;
-  GLfloat y;
-  GLfloat s;
-  GLfloat t;
+  float x;
+  float y;
+  float s;
+  float t;
 } CoordinatesSet;
 
 typedef struct _RGBA_ {
-  GLfloat Red;
-  GLfloat Green;
-  GLfloat Blue;
-  GLfloat Alpha;
+  float Red;
+  float Green;
+  float Blue;
+  float Alpha;
 } RGBAValues;
 
 /* The complex bit to generate a screen quad and map the texture to it*/
@@ -370,10 +401,10 @@ void OpenGLcontext::GenerateTexture() {
 
     glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
 
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), 0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), 0);
     glEnableVertexAttribArray(0);
 
-    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(GLfloat), (GLvoid *)(sizeof(GLfloat) * 2));
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (GLvoid *)(sizeof(float) * 2));
     glEnableVertexAttribArray(1);
 
     glBindVertexArray(0);
@@ -425,7 +456,7 @@ void OpenGLcontext::CreateRenderProgramAndShaders()
         }
     }
 
-
+    // Binding default values
     glBindFragDataLocation(program, 0, "color");
     glUniform1i(glGetUniformLocation(program, "srcTex"), 0);
     
@@ -495,12 +526,12 @@ const void OpenGLcontext::Render()
     // Update the texture
     glUseProgram(computeProgram);
 
-    //PROBLEME SSBO: ?!
+    // Rendering all the SSBOs one by one.
+    // That is very unoptimized and can be improved (By using one SSBO divided into several blocks, for example?)
     int ssbo_binding = 1;
     int block_index = glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "sphereLayout");
     glShaderStorageBlockBinding(computeProgram, block_index, ssbo_binding );
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo_binding, ssboSphere);
-
     
     ssbo_binding=2;
     block_index = glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "triangleLayout");
@@ -512,6 +543,12 @@ const void OpenGLcontext::Render()
     glShaderStorageBlockBinding(computeProgram, block_index, ssbo_binding );
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo_binding, ssboCylinder);
 
+    ssbo_binding=4;
+    block_index = glGetProgramResourceIndex(computeProgram, GL_SHADER_STORAGE_BLOCK, "cubeLayout");
+    glShaderStorageBlockBinding(computeProgram, block_index, ssbo_binding );
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, ssbo_binding, ssboCube);
+
+    // calling the GPU cores to do all the operations.
     glDispatchCompute(SCREEN_WIDTH/16, SCREEN_HEIGHT/16, 1);
 
     glMemoryBarrier(GL_SHADER_IMAGE_ACCESS_BARRIER_BIT);
@@ -519,7 +556,7 @@ const void OpenGLcontext::Render()
 
     
     // Actual Render
-    glUseProgram(program);    
+    glUseProgram(program);
     
     glBindVertexArray(quadVAO);
 

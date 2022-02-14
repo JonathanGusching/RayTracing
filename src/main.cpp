@@ -25,8 +25,9 @@ int main()
     
     Material mat=Material(0.5,0.4,0.0,1.0, glm::vec3(1.0,0.0,0.0));
     Material mat1=Material(0.5,0.4,0.0,1.0, glm::vec3(1.0,0.0,1.0));
+    Material mat2=Material(0.5,0.4,0.0,1.0, glm::vec3(0.0,1.0,0.0));
 
-    Cube cube=Cube(glm::vec3(0.0,0.0,0.0), glm::vec3(100.0,100.0,100.0), mat );
+    Cube cube=Cube(glm::vec3(50.0,50.0,50.0), glm::vec3(100.0,100.0,100.0), mat2 );
     Cube cube1=Cube(glm::vec3(0.0,19.0,0.0), glm::vec3(10.6,49.0,10.0), mat );
     Cube cube2=Cube(glm::vec3(0.0,19.0,49.0), glm::vec3(10.6,10.0,10.0), mat );
     
@@ -47,6 +48,7 @@ int main()
     sm.currentScene.AddObject(sphere3);
     sm.currentScene.AddObject(tri);
     sm.currentScene.AddObject(cylinder);
+    sm.currentScene.AddObject(cube);
 
     sm.ExportScene("../scenes/test.xml");
     sm.ImportScene("../scenes/test.xml");
@@ -60,14 +62,9 @@ int main()
     //Adding the shaders
     context.AddShader("shaders/simple_vertex.vert", GL_VERTEX_SHADER);
     context.AddShader("shaders/simple_color.frag", GL_FRAGMENT_SHADER);
-    
     context.AddShader("shaders/ray_tracing.shader", GL_COMPUTE_SHADER);
     
-
     context.GenerateTexture();
-    
-    //context.SendToOpenGL(); // preparing the GPU memory for the objects, their format, attributes, etc...
-    //context.GenerateVAO(); // creating the GPU objects
     
     context.CreateRenderProgramAndShaders(); // create the program and the shaders in the context
     context.CreateComputeProgram();

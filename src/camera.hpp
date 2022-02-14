@@ -10,33 +10,37 @@ class Camera:public Object
 		float last_x;
 		float last_y;
 		float cameraSpeed;
+		float sensitivity;
 
 		bool first_time;
 	
 		// Object already contains the position
 		glm::vec3 direction;
-		glm::vec3 up;
+		glm::vec3 left;
 
 		float yaw;
 		float pitch;
 
-		Camera(glm::vec3 thePos, glm::vec3 theDirection, glm::vec3 theUp):Object(thePos)
+		Camera(glm::vec3 thePos, glm::vec3 theDirection, glm::vec3 theLeft, float theSensitivity):Object(thePos)
 		{
 			direction=theDirection;
-			up=theUp;
+			left=theLeft;
 			pitch=0;
 			yaw=0;
 			cameraSpeed=7.0f;
+			sensitivity=theSensitivity;
 		}
 
 		Camera():Object()
 		{
 			direction=glm::vec3(0.0,0.0,1.0);
-			up=glm::vec3(0.0,-1.0,0.0);
+			left=glm::vec3(-1.0,0.0,0.0);
 			pitch=0;
 			yaw=0;
 			cameraSpeed=7.0f;
+			sensitivity=0.07f;
 		}
+
 
 		~Camera()
 		{

@@ -37,4 +37,12 @@
       <color x="1" y="0" z="0"/>
     </material>
   </Object>
+  <Object type="Cube">
+    <position x="75" y="75" z="75"/>
+    <low x="50" y="50" z="50"/>
+    <up x="100" y="100" z="100"/>
+    <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
+      <color x="0" y="1" z="0"/>
+    </material>
+  </Object>
 </scene>

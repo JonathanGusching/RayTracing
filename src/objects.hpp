@@ -35,6 +35,9 @@ public:
 	Scene(){
 		name="default.xml\0";
 	}
+	Scene(std::string& sceneName){
+		name=sceneName;
+	}
 	~Scene(){
 		//TODO TO DO
 	}
@@ -181,6 +184,16 @@ class Cube:public Object
 			MaterialToXML(s, mat);
 			
 			s.end_element();
+		}
+		virtual void ToBuffer(GLintptr& offset)
+		{
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(low));
+		    offset+=12;
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(up));
+		    offset+=12;
+
+		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 28 ,&(mat));
+		    offset+=28;
 		}
 		Cube():Object()
 		{

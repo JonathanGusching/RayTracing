@@ -5,8 +5,8 @@
 #include <iostream>
 #include <vector>
 #include <string>
-#include <ctime> // write to log
-#include <chrono>
+#include <ctime> // used to write logs 
+#include <chrono> // idem
 
 //OpenGL
 #include <GL/glew.h>
@@ -15,7 +15,6 @@
 #include <glm/glm.hpp>
 
 // headers
-#include "ray.hpp"
 #include "material.hpp"
 #include "shader.hpp"
 #include "objects.hpp"
@@ -47,6 +46,8 @@ class OpenGLcontext
 		std::vector<Shader*> shaders;
 
 		/* We create a big quad and map a texture to it using a compute shader */
+	private:
+		// Used for rendering, they don't need to be public. Most are references to objects created by OpenGL
 		GLuint quadIBO;
   		GLuint quadVBO;
   		GLuint quadVAO;
@@ -58,7 +59,9 @@ class OpenGLcontext
     	GLuint ssboSphere;
     	GLuint ssboTriangle;
     	GLuint ssboCylinder;
-    	
+    	GLuint ssboCube;
+
+    public:
 		/* Functions for the Log system (to file or to terminal) */
 		/* The log shows the warnings */
 		const void InitializeLogSystemToFile();
@@ -84,11 +87,11 @@ class OpenGLcontext
 		/  adding shaders (fragment, vertex and compute) and bind them to 			/
 		/  the respective program ID 											   */ 
 		void CreateWindow(std::string windowName, int screen_width, int screen_height);
-		void GenerateTexture();
-		void AddShader(const char* file, GLenum type);
-		void CreateRenderProgramAndShaders();
+		void GenerateTexture(); // Generate the quad texture for rendering
+		void AddShader(const char* file, GLenum type); // Add any type of shader from file, and with type 
+		void CreateRenderProgramAndShaders(); // Create vertex and fragment program shaders
 		void CreateComputeProgram();
-		void PrepareComputeShader();
+		void PrepareComputeShader(); // prepare compute shader for rendering, with colour format, etc...
 
 		/* Rendering procedure called in the loop */
 		const void Render();
@@ -98,8 +101,8 @@ class OpenGLcontext
 		void ProcessCameraSpeed();
 		void MoveRight();
 		void MoveLeft();
-		void MoveForward();
-		void MoveBackward();
+		void MoveForward(bool sprint);
+		void MoveBackward(bool sprint);
 
 		/* Rendering loop, executed at every frame */
 		void Loop();
@@ -112,10 +115,8 @@ class OpenGLcontext
 
 	private:
 		static void FramebufferSizeCallback(GLFWwindow* window, int width, int height); // callback for window resizing
-		bool KeyInput();
+		bool KeyInput(); // Key input callback function
 		float deltaTime=0.0f;
 		float lastFrame=0.0f;
-		//void key_input_callback(GLFWwindow* window, int key, int scancode, int action, int mods); // callback for key inputs
-
 };
 #endif
