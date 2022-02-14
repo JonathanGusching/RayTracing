@@ -25,13 +25,15 @@ void CursorCallBack(GLFWwindow* window, double x, double y)
     context->mainCamera.last_x=x;
     context->mainCamera.last_y=y;
     
-    /* Check rotations */
+    /* Forward direction */
     context->mainCamera.direction.z = cos(context->mainCamera.yaw) * cos(context->mainCamera.pitch);
     context->mainCamera.direction.x = sin(-context->mainCamera.pitch);
     context->mainCamera.direction.y = sin(context->mainCamera.yaw)*cos(context->mainCamera.pitch);
     
-    context->mainCamera.direction=glm::normalize(context->mainCamera.direction);
+    //Technically it's already normalized
+    //context->mainCamera.direction=glm::normalize(context->mainCamera.direction);
     
+    /* Left vector is just a permutation of the direction */
     context->mainCamera.left.x = -cos(context->mainCamera.yaw) * cos(context->mainCamera.pitch);
     context->mainCamera.left.z = sin(-context->mainCamera.pitch);
     context->mainCamera.left.y = sin(context->mainCamera.yaw)*cos(context->mainCamera.pitch);
@@ -239,7 +241,7 @@ const void OpenGLcontext::SendCurrentScene()
     offset=0;
     glGenBuffers(1, &ssboCube);
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, ssboCube);
-    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 + 56 * cptCube, NULL, GL_DYNAMIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
+    glBufferData(GL_SHADER_STORAGE_BUFFER, 4 + 52 * cptCube, NULL, GL_DYNAMIC_DRAW); //sizeof(data) only works for statically sized C/C++ arrays.
     glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0 , 4 ,&(cptCube));
     offset+=4;
             

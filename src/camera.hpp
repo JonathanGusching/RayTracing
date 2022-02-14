@@ -9,8 +9,8 @@ class Camera:public Object
 	public:
 		float last_x;
 		float last_y;
-		float cameraSpeed;
-		float sensitivity;
+		float cameraSpeed; // For the movement
+		float sensitivity; // for the lookaround.
 
 		bool first_time;
 	

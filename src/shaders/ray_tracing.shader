@@ -224,14 +224,35 @@ vec3 cubeNml(vec3 i, vec3 bmin, vec3 bmax) {
     return vec3(0.0, 0.0, 0.0);
 }
 
-/* CUBE */
+bool Intersect(const Ray ray, Cube cube, inout Hit rayHit) {
+  vec3 invDir=1.0/normalize(ray.direction);
+
+  vec3 tbot = invDir * (cube.min - ray.origin);
+  vec3 ttop = invDir * (cube.max - ray.origin);
+  vec3 tmin = min(ttop, tbot);
+  vec3 tmax = max(ttop, tbot);
+  vec2 t = max(tmin.xx, tmin.yz);
+  float t0 = max(t.x, t.y);
+  t = min(tmax.xx, tmax.yz);
+  float t1 = min(t.x, t.y);
+  
+  if(t1 > max(t0, 0.0))
+  {
+    rayHit.distance = t0;
+    rayHit.normal = cubeNml(ray.origin + t0 * ray.direction, cube.min, cube.max);
+    rayHit.material=cube.material;
+    return true;
+  }
+  return false;
+}
+/*
 bool Intersect(Ray ray, Cube cube, inout Hit rayHit)
 {   
     float tmin, tmax, tx1, tx2, ty1, ty2, tz1, tz2;
     if(ray.direction.x>epsilon)
     {
-      tx1 = (cube.min.x - ray.origin.x);
-      tx2 = (cube.max.x - ray.origin.x);
+      tx1 = (cube.min.x - ray.origin.x)/ray.direction.x;
+      tx2 = (cube.max.x - ray.origin.x)/ray.direction.x;
 
     }
     else
@@ -245,8 +266,8 @@ bool Intersect(Ray ray, Cube cube, inout Hit rayHit)
     
     if(ray.direction.y>epsilon)
     {
-      ty1 = (cube.min.y - ray.origin.y);
-      ty2 = (cube.max.y - ray.origin.y);
+      ty1 = (cube.min.y - ray.origin.y)/ray.direction.y;
+      ty2 = (cube.max.y - ray.origin.y)/ray.direction.y;
 
     }
     else
@@ -259,8 +280,8 @@ bool Intersect(Ray ray, Cube cube, inout Hit rayHit)
 
     if(ray.direction.z>epsilon)
     {
-      tz1 = (cube.min.z - ray.origin.z);
-      tz2 = (cube.min.z - ray.origin.z);
+      tz1 = (cube.min.z - ray.origin.z)/ray.direction.z;
+      tz2 = (cube.min.z - ray.origin.z)/ray.direction.z;
       
     }
     else
@@ -272,7 +293,7 @@ bool Intersect(Ray ray, Cube cube, inout Hit rayHit)
     tmin = max(tmin, min(tz1, tz2));
     tmax = min(tmax, max(tz1, tz2));
 
-    if(tmax >= tmin && tmin < rayHit.distance )
+    if(tmax >= tmin && tmax>0 && tmin < rayHit.distance )
     {
       rayHit.distance = tmin;
       rayHit.normal = cubeNml(ray.origin + tmin * ray.direction, cube.min, cube.max);
@@ -280,9 +301,10 @@ bool Intersect(Ray ray, Cube cube, inout Hit rayHit)
       return true;
     }
     return false;
-}
+}*/
+
 /*      TRIANGLE      */
-// Möller-Trumbore
+// Möller-Trumbore algorithm
 bool Intersect(Ray ray, Triangle triangle, inout Hit rayHit) {
   vec3 edge1= triangle.vertices[1] - triangle.vertices[0];
   vec3 edge2= triangle.vertices[2] - triangle.vertices[0];
@@ -314,7 +336,7 @@ bool Intersect(Ray ray, Triangle triangle, inout Hit rayHit) {
       rayHit.normal=normalize(cross(edge2, edge1));
     else
       rayHit.normal=normalize(cross(edge1, edge2));
-    //Position de l'impact = ray.origin + ray.direction * t;
+    //NB: hit position = ray.origin + ray.direction * t;
     rayHit.distance = t;
     rayHit.material = triangle.material;
     return true;
@@ -436,7 +458,14 @@ bool Intersect(Ray ray, Sphere sphere, inout Hit rayHit) {
 /* Getting the closest intersection among the objects sent through buffers */
 Hit ClosestHitPoint(Ray ray)
 {
-  Hit hit=CreateHit();
+  Hit hit=CreateHit();  
+  for(int i=0; i<nb_Cubes; i++)
+  {
+    Cube cube=Cube(vec3(cubes_SSBO[i*13 ],cubes_SSBO[i*13 +1],cubes_SSBO[i*13 +2]),
+                   vec3(cubes_SSBO[i*13 +3],cubes_SSBO[i*13 +4],cubes_SSBO[i*13 +5]), 
+      Material(cubes_SSBO[i*13 + 6], cubes_SSBO[i*13 + 7], cubes_SSBO[i*13 + 8], cubes_SSBO[i*13 + 9], vec3(cubes_SSBO[i*13 + 10], cubes_SSBO[i*13 + 11], cubes_SSBO[i*13 + 12])));
+    Intersect(ray, cube, hit); 
+  }
 
   for(int i=0; i<nb_Cylinders; i++)
   {
@@ -463,13 +492,9 @@ Hit ClosestHitPoint(Ray ray)
       Material(triangles_SSBO[i*16 + 9], triangles_SSBO[i*16 + 10], triangles_SSBO[i*16 + 11], triangles_SSBO[i*16 + 12], vec3(triangles_SSBO[i*16 + 13], triangles_SSBO[i*16 + 14], triangles_SSBO[i*16 + 15])));
     Intersect(ray, triangle, hit); 
   }
-  for(int i=0; i<nb_Cubes; i++)
-  {
-    Cube cube=Cube(vec3(cubes_SSBO[i*13 ],cubes_SSBO[i*13 +1],cubes_SSBO[i*13 +2]),
-                   vec3(cubes_SSBO[i*13 +3],cubes_SSBO[i*13 +4],cubes_SSBO[i*13 +5]), 
-      Material(triangles_SSBO[i*13 + 6], triangles_SSBO[i*13 + 7], triangles_SSBO[i*13 + 8], triangles_SSBO[i*13 + 9], vec3(triangles_SSBO[i*13 + 10], triangles_SSBO[i*13 + 11], triangles_SSBO[i*13 + 12])));
-    Intersect(ray, cube, hit); 
-  }
+  
+  
+
 
   return hit;
 }
@@ -551,8 +576,7 @@ void main() {
   //initial_ray.direction=normalize(vec3(0.0,0.0,1.0f));
 
   initial_ray.origin=actual_position;
-  //float angle_x=-0.05;
-  //float angle_y=0.1;
+
   float yaw=angle_xy[0];
   float pitch=angle_xy[1];
 

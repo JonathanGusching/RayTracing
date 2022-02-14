@@ -39,7 +39,6 @@ public:
 		name=sceneName;
 	}
 	~Scene(){
-		//TODO TO DO
 	}
 };
 
@@ -96,6 +95,7 @@ class Object
 			
 			s.end_element();
 		}
+		// To write the object to the buffer
 		virtual void ToBuffer(GLintptr& offset)
 		{
 		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(centerPos));
@@ -191,7 +191,6 @@ class Cube:public Object
 		    offset+=12;
 		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 12 ,&(up));
 		    offset+=12;
-
 		    glBufferSubData(GL_SHADER_STORAGE_BUFFER, offset , 28 ,&(mat));
 		    offset+=28;
 		}
