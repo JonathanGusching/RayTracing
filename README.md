@@ -9,7 +9,8 @@ Pour faire fonctionner le ray tracing par shaders (GPU), il est nécessaire d'av
 - libstudxml
 
 Le code a été compilé avec GCC (c++2a) et testé sous Linux. Il se peut qu'il y ait des soucis sous Windows, mais les bibliothèques utilisées sont portables.
-
+## Compilation
+Sous Linux, il suffit de se rendre dans le dossier src et d'exécuter la commande "make all", qui devrait automatiquement compiler et créer RayTracing.exe
 ## Avant-propos
 Le programme a été compilé et exécuté sous Linux (Ubuntu) avec succès. Les bibliothèques utilisées sont portables, mais il n'est pas certain que tout fonctionne sous Windows sans modifications des #include
 
