@@ -49,5 +49,10 @@ S'il venait à être nécessaire de modifier les shaders pour avoir un rendu tot
 ## Problèmes rencontrés
 Sous Linux, faire attention aux pilotes utilisés et être sûr que le programme utilise bien le GPU et non pas uniquement le CPU sinon, l'écran sera noir.
 
+## Problèmes connus
+- La caméra ne supporte pas les grosses rotations (typiquement les demi-tours). Le bug n'est pas encore corrigé.
+- Les cubes ont encore un comportement étrange et doivent être changés lors d'une mise à jour.
+- Il y a une primitive pour les plans mais n'est pas encore gérée par le descripteur de scènes
+
 ## Remarques
 Les matériaux ont beaucoup de paramètres mais ne permettent pas encore de gérer la transparence, réfraction. Cela reste une piste d'amélioration possible [Au niveau du compute shader]

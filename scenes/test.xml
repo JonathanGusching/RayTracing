@@ -1,15 +1,50 @@
 <scene name="default.xml">
   <Object type="Sphere">
-    <position x="-140" y="0" z="0"/>
+    <position x="0" y="-100" z="0"/>
+    <radius radius="50"/>
+    <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
+      <color x="1" y="0" z="0"/>
+    </material>
+  </Object>
+  <Object type="Sphere">
+    <position x="120" y="0" z="0"/>
+    <radius radius="70"/>
+    <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
+      <color x="1" y="0" z="1"/>
+    </material>
+  </Object>
+  <Object type="Sphere">
+    <position x="-240" y="20" z="10"/>
     <radius radius="90"/>
     <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
       <color x="1" y="0" z="1"/>
     </material>
   </Object>
+  <Object type="Sphere">
+    <position x="0" y="0" z="200"/>
+    <radius radius="50"/>
+    <material shininess="0.1" diffuse="0.9" transparency="0" n="1">
+      <color x="0" y="0.6" z="0.1"/>
+    </material>
+  </Object>
+  <Object type="Sphere">
+    <position x="120" y="0" z="0"/>
+    <radius radius="70"/>
+    <material shininess="0.7" diffuse="0.4" transparency="0.6" n="1">
+      <color x="1" y="0.1" z="0.6"/>
+    </material>
+  </Object>
+  <Object type="Sphere">
+    <position x="-140" y="0" z="300"/>
+    <radius radius="90"/>
+    <material shininess="0.8" diffuse="0.8" transparency="0" n="1">
+      <color x="0.3" y="0.1" z="0.4"/>
+    </material>
+  </Object>
   <Object type="Triangle">
-    <position x="0" y="33.3333" z="0"/>
-    <v1 x="0" y="0" z="0"/>
-    <v2 x="100" y="100" z="0"/>
+    <position x="0" y="100" z="166.667"/>
+    <v1 x="0" y="100" z="250"/>
+    <v2 x="100" y="200" z="250"/>
     <v3 x="-100" y="0" z="0"/>
     <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
       <color x="1" y="0" z="0"/>
@@ -17,26 +52,18 @@
   </Object>
   <Object type="Cylinder">
     <position x="0" y="20" z="20"/>
-    <up x="0" y="400" z="20"/>
+    <up x="0" y="400" z="90"/>
     <radius radius="80"/>
     <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
       <color x="1" y="0" z="0"/>
     </material>
   </Object>
   <Object type="Cube">
-    <position x="75" y="35" z="25"/>
-    <low x="50" y="10" z="0"/>
-    <up x="100" y="60" z="50"/>
+    <position x="0" y="25" z="25"/>
+    <low x="-50" y="-10" z="0"/>
+    <up x="50" y="60" z="50"/>
     <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
       <color x="1" y="0" z="1"/>
-    </material>
-  </Object>
-  <Object type="Cube">
-    <position x="5.3" y="34" z="5"/>
-    <low x="0" y="19" z="0"/>
-    <up x="10.6" y="49" z="10"/>
-    <material shininess="0.5" diffuse="0.4" transparency="0" n="1">
-      <color x="1" y="0" z="0"/>
     </material>
   </Object>
 </scene>

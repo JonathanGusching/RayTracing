@@ -458,7 +458,10 @@ bool Intersect(Ray ray, Sphere sphere, inout Hit rayHit) {
 /* Getting the closest intersection among the objects sent through buffers */
 Hit ClosestHitPoint(Ray ray)
 {
-  Hit hit=CreateHit();  
+  Hit hit=CreateHit();
+  // To add a mirror plane:
+  //Plane plane=Plane(vec3(0.0,0.0,0.0), vec3(0.0,-1.0,0.0), Material(0.5,0.5,0.5,0.5, vec3(1.0,1.0,1.0)));
+  //Intersect(ray, plane, hit);
   for(int i=0; i<nb_Cubes; i++)
   {
     Cube cube=Cube(vec3(cubes_SSBO[i*13 ],cubes_SSBO[i*13 +1],cubes_SSBO[i*13 +2]),
